@@ -25,7 +25,12 @@ async function run_program(file_list_file ='/dev/stdin') {
 			if (!report.exit_code) {
 				failed_count++;
 			}
-			console.log(icon, inspect(report.program_arguments, { colors: true }), '-', inspect(report.exit_code, { colors: true }));
+			const p_args = inspect(report.program_arguments, { colors: true });
+			const p_status = inspect(report.exit_code, { colors: true });
+			const p_signal = inspect(report.signal_code, { colors: true });
+			const tt = inspect(report.timeout_triggered, { colors: true });
+
+			console.log(`  ${icon} ${p_args} → ${p_status}/${p_signal} timeout_triggered: ${tt}`);
 		}
 	}
 

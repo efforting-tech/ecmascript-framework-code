@@ -10,7 +10,12 @@ async function wait_for_process(child) {
 	});
 }
 
-async function run_program(program, program_arguments=[], report_file='/dev/stdout') {
+async function run_program(program, program_arguments=[], report_file='/dev/stdout', timeout=null) {
+	let timeout_handler;
+	const extra_info = {
+		timeout_triggered: false,
+	};
+
 	const local_temp_directory = await mkdtemp(join(tmpdir(), 'etesft-'));
 
 	const stdout_log_file = join(local_temp_directory, 'stdout.log');
@@ -23,7 +28,20 @@ async function run_program(program, program_arguments=[], report_file='/dev/stdo
 		stdio: ['ignore', stdout_log, stderr_log],
 	});
 
+
+	if (timeout) {
+		timeout_handler = setTimeout(() => {
+			extra_info.timeout_triggered = true;
+			child.kill();
+		}, timeout);
+	}
+
 	await wait_for_process(child);
+
+	if (timeout_handler) {
+		clearTimeout(timeout_handler);
+	}
+
 	await stdout_log.close();
 	await stderr_log.close();
 
@@ -31,9 +49,10 @@ async function run_program(program, program_arguments=[], report_file='/dev/stdo
 	const stderr = (await readFile(stderr_log_file)).toString('base64');
 
 	const report = {
-		program, program_arguments, stdout, stderr,
+		program, program_arguments, stdout, stderr, timeout,
 		exit_code: child.exitCode,
 		signal_code: child.signalCode,
+		...extra_info,
 	}
 
 	writeFile(report_file, JSON.stringify(report));
@@ -75,4 +94,4 @@ while (!finished && remaining.length) {
 
 }
 
-run_program(remaining[0], remaining.slice(1), output_file);
+run_program(remaining[0], remaining.slice(1), output_file, 250);	//1 second timeout by default

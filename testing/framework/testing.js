@@ -3,12 +3,20 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 
-async function wait_for_process(child) {
+function wait_for_process(child) {
 	return new Promise((resolve, reject) => {
 		child.on('error', reject);
-		child.on('exit', resolve);
+		child.on('exit', (code, signal) => {
+			//According to ChatGPT this is needed because Node internally sets these after firing the event. I have not verified if this is actually the case.
+			//TODO: Verify this since ChatGPT is known to hallucinate sometimes.
+			child.exitCode = code;
+			child.signalCode = signal;
+			resolve();
+		});
 	});
 }
+
+
 
 async function run_program(program, program_arguments=[], report_file='/dev/stdout', timeout=null) {
 	let timeout_handler;
@@ -93,5 +101,8 @@ while (!finished && remaining.length) {
 	}
 
 }
+
+//TODO - make timeout an option
+//TODO - set a timeout for sigkill if sigterm fails.
 
 run_program(remaining[0], remaining.slice(1), output_file, 250);	//1 second timeout by default

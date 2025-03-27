@@ -12,7 +12,6 @@ async function run_program(report_file='/dev/stdin') {
 	delete report.stdout;
 	delete report.stderr;
 
-
 	const stdout = stdout_buf.toString('utf8');
 	const stderr = stderr_buf.toString('utf8');
 

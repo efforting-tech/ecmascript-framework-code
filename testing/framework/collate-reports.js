@@ -31,6 +31,27 @@ async function run_program(file_list_file ='/dev/stdin') {
 			const tt = inspect(report.timeout_triggered, { colors: true });
 
 			console.log(`  ${icon} ${p_args} → ${p_status}/${p_signal} timeout_triggered: ${tt}`);
+
+			if (report.timeout_triggered || report.exit_code) {
+
+				const stdout = report.stdout.toString('utf8');
+				const stderr = report.stderr.toString('utf8');
+
+				console.log('stdout:')
+				for (const line of stdout.split('\n')) {
+					const presentable_line = inspect(line, { depth: null, colors: true });
+					console.log(`  | ${presentable_line}`);
+				}
+
+				console.log('stderr:')
+				for (const line of stderr.split('\n')) {
+					const presentable_line = inspect(line, { depth: null, colors: true });
+					console.log(`  | ${presentable_line}`);
+				}
+
+
+			}
+
 		}
 	}
 

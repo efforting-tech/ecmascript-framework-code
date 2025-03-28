@@ -14,13 +14,20 @@ const [root_node] = root.iter_nodes();
 
 const children = [...root_node.body.iter_nodes()];
 
-for (const node of children[1].body.iter_nodes()) {
+/*for (const node of children[1].body.iter_nodes()) {
 	console.log(node.title, node.line_view);
+}
+*/
+
+if (children[0].title !== 'Child 1') {
+	throw new Error('Validation failed')
 }
 
 
+if (children[1].title !== 'Child 2') {
+	throw new Error('Validation failed')
+}
 
-
-
-
-process.exit(1);
+if (children[0].body.iter_nodes().next().value.title !== 'Grand child 1') {
+	throw new Error('Validation failed')
+}

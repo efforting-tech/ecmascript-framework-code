@@ -1,7 +1,7 @@
 
 # TODO - remove temporary first target
-#current: clean xml-processing
-#	ls ../test-report/*.json | node ../framework/collate-reports.js
+current: clean text-tree-processing
+	ls ../test-report/*.json | node ../framework/collate-reports.js
 
 
 
@@ -14,6 +14,7 @@ all: clean test switchable-iterator xml-processing
 test: $(patsubst %.js,../test-report/%.json,$(wildcard test-*.js))
 switchable-iterator: $(patsubst %.js,../test-report/%.json,$(wildcard swit-*.js))
 xml-processing: $(patsubst %.js,../test-report/%.json,$(wildcard xml-processing-*.js))
+text-tree-processing: $(patsubst %.js,../test-report/%.json,$(wildcard tt-processing-*.js))
 
 clean:
 	rm -rf ../test-report/*

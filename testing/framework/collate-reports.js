@@ -39,14 +39,16 @@ async function run_program(file_list_file ='/dev/stdin') {
 
 				console.log('stdout:')
 				for (const line of stdout.split('\n')) {
-					const presentable_line = inspect(line, { depth: null, colors: true });
-					console.log(`  | ${presentable_line}`);
+					//const presentable_line = inspect(line, { depth: null, colors: true });
+					//console.log(`  | ${presentable_line}`);
+					console.log(`  | ${line}`);
 				}
 
 				console.log('stderr:')
 				for (const line of stderr.split('\n')) {
-					const presentable_line = inspect(line, { depth: null, colors: true });
-					console.log(`  | ${presentable_line}`);
+					//const presentable_line = inspect(line, { depth: null, colors: true });
+					//console.log(`  | ${presentable_line}`);
+					console.log(`  | ${line}`);
 				}
 
 

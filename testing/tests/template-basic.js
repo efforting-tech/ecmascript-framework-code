@@ -4,150 +4,13 @@ import * as R from '../../lib/data/rules.js';
 import * as C from '../../lib/data/conditions.js';
 
 import * as T_AST from '../../lib/templates/ast.js';
-import { concat as regexp_concat, join as regexp_join, update_flag as regexp_update_flag } from '../../lib/text/regexp.js';
-import { Enum } from '../../lib/enum.js';
+import { create_block_rule } from '../../lib/templates/rule-factories.js';
 
 
 const CONTEXT_SYMBOL = Symbol('CONTEXT_SYMBOL');
 
 //Just while experimenting
 import { inspect } from 'util';
-
-
-
-class Abstract_Template_Node {
-	constructor(title=null, body=[], source=undefined) {
-		Object.assign(this, { title, body, source });
-	}
-}
-
-class Template_Node extends Abstract_Template_Node {};
-class Text_Node extends Abstract_Template_Node {
-
-	to_string(indent=0) {
-		const indent_string = '    '.repeat(indent); 	//TODO - support various indent modes
-		if (this.title === null) {
-			return this.body.map(item => item.to_string(indent)).join('\n');	//TODO - support various line ending modes		} else {
-		} else {
-			return [
-				`${indent_string}${this.title}`,
-				...this.body.map(item => item.to_string(indent+1)),
-			].join('\n');	//TODO - support various line ending modes
-		}
-	}
-
-};
-
-
-//TODO - decide if we should utilize this or not - the idea was that expression_node may have an expression as a title or maybe even body.
-//class Expression_Node extends Template_Node {};
-
-
-class Resolver_Match {
-	constructor(resolver, item, match) {
-		Object.assign(this, { resolver, item, match });
-	}
-}
-
-
-const REQUIREMENT_STATE = new Enum('REQUIREMENT_STATE', {
-	MANDATORY: Symbol,
-	OPTIONAL: Symbol,
-	NOT_ALLOWED: Symbol,
-});
-
-
-function check_requirement_state(option, if_used, if_optional) {
-
-	function run(...callback_list) {
-		for (const callback of callback_list) {
-			if (callback) {
-				callback();
-			}
-		}
-	}
-
-	switch (option) {
-		case REQUIREMENT_STATE.MANDATORY:
-			run(if_used);
-			return true;
-
-		case REQUIREMENT_STATE.OPTIONAL:
-			run(if_used, if_optional);
-			return true;
-
-		case REQUIREMENT_STATE.NOT_ALLOWED:
-			return false;
-		default:
-			throw new Error('option must be REQUIREMENT_STATE');
-	}
-}
-
-
-
-function conditional_number_entries(entries, start=0) {
-	const result = {};
-	let count = start;
-
-	for (const [key, value] of Object.entries(entries)) {
-		if (value) {
-			result[count++] = key;
-		}
-	}
-	return result;
-}
-
-function create_block_rule(tag, handler, include_type=REQUIREMENT_STATE.OPTIONAL, include_name=REQUIREMENT_STATE.OPTIONAL, include_settings=REQUIREMENT_STATE.OPTIONAL, ignore_case=true) {
-	const pieces = [];
-	const inner = regexp_join(tag.split(/\s+/), /\s/);
-
-	const type_used = check_requirement_state(include_type, () => {
-		pieces.push(/^(\w+)\s+/);
-	}, () => {
-		pieces.push('?');
-	});
-
-	pieces.push(inner, /:?/);
-	const name_used = check_requirement_state(include_name, () => {
-		pieces.push(/(?:\s+(\w+))/);
-	}, () => {
-		pieces.push('?');
-	});
-
-	const settings_used = check_requirement_state(include_settings, () => {
-		pieces.push(/(?:\s*(\{.*\}))/);
-	}, () => {
-		pieces.push('?');
-	});
-
-	pieces.push(/\s*$/);
-
-	const groups = conditional_number_entries({
-		type: type_used,
-		name: name_used,
-		settings: settings_used,
-	});
-
-	const pattern = regexp_update_flag(regexp_concat(...pieces), 'i', ignore_case);
-
-	console.log(groups, pattern);
-
-	return new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( pattern )),
-		(resolver, item, match) => {
-			const regex_groups = match.value.value.slice(1);
-			const unpacked = {};
-			for (let index=0; index<regex_groups.length; index++) {
-				unpacked[groups[index]] = regex_groups[index];
-			}
-
-			return handler(resolver, item, match, unpacked);
-
-		}
-	);
-
-
-}
-
 
 
 const Template_Statement_Resolver = new O.Generic_Resolver('Template_Statement_Resolver', [
@@ -170,51 +33,6 @@ const Template_Statement_Resolver = new O.Generic_Resolver('Template_Statement_R
 
 	}),
 ]);
-
-
-
-/*const Template_Statement_Resolver = new O.Generic_Resolver('Template_Statement_Resolver', [
-	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /^(\w+)\s+code:?\s+(\w+)(?:\s*(\{.*\}))?\s*$/i )),
-		(resolver, item, match) => {
-
-			const settings = match.value.value[3];
-			if (settings) {
-				//TODO - care about these settings, parse the template, add this to the other rules (we should actually use a rule factory and then a single handler to throw moar drysoot in the mix).
-				console.log("Settings", item[CONTEXT_SYMBOL].evaluate(settings));
-			}
-
-			const result = T_AST.Code_Block.from_node(item.body, match.value.value[2], match.value.value[1]);
-			const trimmed_lines = result.contents.trim_trailing_blank_lines();
-
-
-			if (trimmed_lines) {
-				return new T_AST.Sequence(result, new T_AST.Blank_Lines(trimmed_lines));
-			} else {
-				return result;
-			}
-
-		}
-	),
-
-	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /^(\w+)\s+code:?(?:\s*(\{.*\}))?\s*$/i )),
-		(resolver, item, match) => {
-			return T_AST.Code_Block.from_node(item.body, undefined, match.value.value[1]);
-		}
-	),
-
-	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /^code:?\s+(\w+)(?:\s*(\{.*\}))?\s*$/i )),
-		(resolver, item, match) => {
-			return T_AST.Code_Block.from_node(item.body, match.value.value[1]);
-		}
-	),
-
-	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /^code:?(?:\s*(\{.*\}))?\s*$/i )),
-		(resolver, item, match) => {
-			return T_AST.Code_Block.from_node(item.body);
-		}
-	),
-]);
-*/
 
 
 class Context {
@@ -254,7 +72,10 @@ const Template_TT_Resolver = new O.Tree_Processor('Template_TT_Resolver', [
 	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /(.*)/ )),
 		//TODO - actually parse the title using the template parser
 		(resolver, item, match) => {
-			return new Template_Node(item.title, resolver.process_tree(item.body), new Resolver_Match(resolver, item, match));
+			const result = new T_AST.Template_Node(item.title, resolver.process_tree(item.body));
+			//TODO: attach this source: new Resolver_Match(resolver, item, match)
+
+			return result;
 		}
 	),
 ]);
@@ -325,18 +146,18 @@ const body_array_renderer = new O.Generic_Resolver('body_array_renderer', [
 ]);
 
 const body_element_renderer = new O.Generic_Resolver('body_element_renderer', [
-	new R.Resolution_Rule(new C.Type_is(Template_Node), (resolver, item, match) => {
-		return new Text_Node(resolver[TITLE_RENDERER].resolve(item.title), resolver[BODY_ARRAY_RENDERER].resolve(item.body));
+	new R.Resolution_Rule(new C.Type_is(T_AST.Template_Node), (resolver, item, match) => {
+		return new T_AST.Text_Node(resolver[TITLE_RENDERER].resolve(item.title), resolver[BODY_ARRAY_RENDERER].resolve(item.body));
 	}),
 
 	new R.Resolution_Rule(new C.Type_is(T_AST.Sequence), (resolver, item, match) => {
-		return new Text_Node(null, item.contents.map(sub_item => resolver.resolve(sub_item)));
+		return new T_AST.Text_Node(null, item.contents.map(sub_item => resolver.resolve(sub_item)));
 	}),
 
 	new R.Resolution_Rule(new C.Type_is(T_AST.Code_Block), (resolver, item, match) => {
-		return new Text_Node(null, [
-			new Text_Node('```' + `${item.type}`, resolver[BODY_ARRAY_RENDERER].resolve(item.contents)),
-			new Text_Node('```')
+		return new T_AST.Text_Node(null, [
+			new T_AST.Text_Node('```' + `${item.type}`, resolver[BODY_ARRAY_RENDERER].resolve(item.contents)),
+			new T_AST.Text_Node('```')
 		]);
 	}),
 
@@ -345,15 +166,15 @@ const body_element_renderer = new O.Generic_Resolver('body_element_renderer', [
 		const error_text = `Found unprocessed Text Node: ${JSON.stringify(item.title)} when processing data using ${resolver.name}.`;
 		//throw new Error(error_text)
 
-		return new Text_Node(null, [
-			new Text_Node(`> [!WARNING]`),
-			new Text_Node(`> ${error_text}`),
+		return new T_AST.Text_Node(null, [
+			new T_AST.Text_Node(`> [!WARNING]`),
+			new T_AST.Text_Node(`> ${error_text}`),
 		]);
 
 	}),
 
 	new R.Resolution_Rule(new C.Type_is(T_AST.Blank_Lines), (resolver, item, match) => {
-		return new Text_Node(null, Array.from({ length: item.count }, () => new Text_Node('')));
+		return new T_AST.Text_Node(null, Array.from({ length: item.count }, () => new T_AST.Text_Node('')));
 	}),
 
 

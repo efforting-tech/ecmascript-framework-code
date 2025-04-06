@@ -110,10 +110,8 @@ const template = Template.from_string(`
 
 
 
-const BODY_ARRAY_RENDERER = Symbol('BODY_ARRAY_RENDERER');
-const BODY_ELEMENT_RENDERER = Symbol('BODY_ELEMENT_RENDERER');
-const TITLE_RENDERER = Symbol('TITLE_RENDERER');
-const TEMPLATE_RENDERER = Symbol('TEMPLATE_RENDERER');
+
+const dispatch_table = {};
 
 const template_renderer = new O.Generic_Resolver('template_renderer', [
 	new R.Resolution_Rule(new C.Type_is(Template), (resolver, item, match) => {
@@ -121,7 +119,7 @@ const template_renderer = new O.Generic_Resolver('template_renderer', [
 	}),
 
 	new R.Default_Rule((resolver, item, match) => {
-		return resolver[BODY_ELEMENT_RENDERER].resolve(item);
+		return dispatch_table.body_element.resolve(item);
 	}),
 
 
@@ -136,18 +134,18 @@ const title_renderer = new O.Generic_Resolver('title_renderer', [
 
 const body_array_renderer = new O.Generic_Resolver('body_array_renderer', [
 	new R.Resolution_Rule(new C.Type_is(Array), (resolver, item, match) => {
-		return item.map(item => resolver[BODY_ELEMENT_RENDERER].resolve(item));
+		return item.map(item => dispatch_table.body_element.resolve(item));
 	}),
 
 	new R.Default_Rule((resolver, item, match) => {
-		return [resolver[BODY_ELEMENT_RENDERER].resolve(item)];
+		return [dispatch_table.body_element.resolve(item)];
 	}),
 
 ]);
 
 const body_element_renderer = new O.Generic_Resolver('body_element_renderer', [
 	new R.Resolution_Rule(new C.Type_is(T_AST.Template_Node), (resolver, item, match) => {
-		return new T_AST.Text_Node(resolver[TITLE_RENDERER].resolve(item.title), resolver[BODY_ARRAY_RENDERER].resolve(item.body));
+		return new T_AST.Text_Node(dispatch_table.title.resolve(item.title), dispatch_table.body_array.resolve(item.body));
 	}),
 
 	new R.Resolution_Rule(new C.Type_is(T_AST.Sequence), (resolver, item, match) => {
@@ -156,7 +154,7 @@ const body_element_renderer = new O.Generic_Resolver('body_element_renderer', [
 
 	new R.Resolution_Rule(new C.Type_is(T_AST.Code_Block), (resolver, item, match) => {
 		return new T_AST.Text_Node(null, [
-			new T_AST.Text_Node('```' + `${item.type}`, resolver[BODY_ARRAY_RENDERER].resolve(item.contents)),
+			new T_AST.Text_Node('```' + `${item.type}`, dispatch_table.body_array.resolve(item.contents)),
 			new T_AST.Text_Node('```')
 		]);
 	}),
@@ -182,14 +180,16 @@ const body_element_renderer = new O.Generic_Resolver('body_element_renderer', [
 
 
 
-for (const target of [body_array_renderer, body_element_renderer, title_renderer, template_renderer]) {
-	target[TITLE_RENDERER] = title_renderer;
-	target[TEMPLATE_RENDERER] = template_renderer;
-	target[BODY_ARRAY_RENDERER] = body_array_renderer;
-	target[BODY_ELEMENT_RENDERER] = body_element_renderer;
-}
+Object.assign(dispatch_table, {
+	body_array: body_array_renderer,
+	body_element: body_element_renderer,
+	title: title_renderer,
+	template: template_renderer
+});
 
 
 
-console.log(template_renderer.resolve(template).to_string());
+
+
+console.log(dispatch_table.template.resolve(template).to_string());
 process.exit(1);

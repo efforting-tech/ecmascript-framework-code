@@ -1,5 +1,9 @@
 
+// NEXT STEP - the parser thing
+
 import * as O from '../../lib/data/operators.js';
+import * as R from '../../lib/data/rules.js';
+import * as C from '../../lib/data/conditions.js';
 import { create_block_rule, create_named_definition_rule } from '../../lib/templates/rule-factories.js';
 import { REQUIREMENT_STATE } from '../../lib/data/management.js';
 
@@ -8,6 +12,10 @@ import { Context, CONTEXT_SYMBOL } from '../../lib/templates/context.js';
 import { Basic_Dotted_Name_Tree_Interface } from '../../lib/data/object.js';
 
 import * as PL_AST from '../../lib/parsing/ast.js';
+
+
+//import { Parser }  from '../../lib/parsing/generic-parser.js';
+import { Advanced_Regex_Tokenizer }  from '../../lib/parsing/regexp-tokenizer.js';
 
 
 import { inspect } from 'util';
@@ -109,18 +117,57 @@ const language_definition = `
 
 `
 
-const token_definition = `
-	optional_space: /(\s*)/
-	default token: anything
+const tokenizer_rules = `
+
+	statement: '§' optional_space, 	#This is the start of the thing
+		anything as value ;	#Here is more stuff
+
+	expression: '«' anything as value '»' ;
+
 `;
 
+const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
 
-pl_parser.process_text(language_definition);
+	new R.Resolution_Rule(new C.Regex_Condition( /^\s+(\w+):/ ),
+		(resolver, item, match) => {
+			console.log('NAME', match);
+		}
+	),
 
+	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
+		(resolver, item, match) => {
+			console.log('IDENTIFIER', match);
+		}
+	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
+		(resolver, item, match) => {
+			console.log('SINGLE_QUOTE', match);		//Here we must enter a sub parser - this means we need to do the parser thing
+		}
+	),
+
+
+
+	new R.Resolution_Rule(new C.Regex_Condition( /\s+/ ),
+		(resolver, item, match) => {
+			console.log('SPACE', match);
+		}
+	),
+
+
+]);
+
+for (const token of tokenizer_rule_parser.feed(tokenizer_rules)) {
+	console.log('TOKEN', token);
+}
+
+
+
+//pl_parser.process_text(language_definition);
 //const tokens = token_definition_parser.process_text(token_definition);
 
 //console.log(inspect(tokens, {colors: true, depth: null}));
-console.log(inspect(root_group, {colors: true, depth: null}));
+//console.log(inspect(root_group, {colors: true, depth: null}));
 
 //TODO next: Implement token definition tables and tokenizers
 //			create a usable tokenizer based on this

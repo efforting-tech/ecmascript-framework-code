@@ -12,9 +12,10 @@ import { Context, CONTEXT_SYMBOL } from '../../lib/templates/context.js';
 import { Basic_Dotted_Name_Tree_Interface } from '../../lib/data/object.js';
 
 import * as PL_AST from '../../lib/parsing/ast.js';
+import * as PL_TOKEN from '../../lib/parsing/tokens.js';
 
 
-//import { Parser }  from '../../lib/parsing/generic-parser.js';
+import { Parser }  from '../../lib/parsing/generic-parser.js';
 import { Advanced_Regex_Tokenizer }  from '../../lib/parsing/regexp-tokenizer.js';
 
 
@@ -28,6 +29,9 @@ const dotted_name_statement_settings = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREME
 // no prefix capture, required name (not used as a name though), no settings, case insensitive, capture anything as name
 const capture_anything = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREMENT_STATE.REQUIRED, REQUIREMENT_STATE.NOT_ALLOWED, true, /.+/];
 
+
+const LINE_INDEX = Symbol('LINE_INDEX');
+const COLUMN_INDEX = Symbol('COLUMN_INDEX');
 
 
 class Group {
@@ -126,41 +130,134 @@ const tokenizer_rules = `
 
 `;
 
-const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
+const common_rules = [
 
-	new R.Resolution_Rule(new C.Regex_Condition( /^\s+(\w+):/ ),
-		(resolver, item, match) => {
-			console.log('NAME', match);
+	new R.Resolution_Rule(new C.Regex_Condition( /(\n+)/ ),
+		(resolver, newlines) => {
+			resolver[LINE_INDEX] += newlines.length;
+			resolver[COLUMN_INDEX] = 0;
 		}
 	),
 
-	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
-		(resolver, item, match) => {
-			console.log('IDENTIFIER', match);
+	new R.Resolution_Rule(new C.Regex_Condition( /([\t ])+/ ),
+		(resolver, spaces) => {
+			resolver[COLUMN_INDEX] += spaces.length;
 		}
 	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /\#(.*)$/m ),
+		(resolver, comment) => {
+			resolver.push_token(new PL_TOKEN.Comment(resolver[LINE_INDEX], resolver[COLUMN_INDEX], comment));
+			resolver[COLUMN_INDEX] += 1 + comment.length;
+		}
+	),
+
+];
+
+
+const tokenizer_string_parser = new Advanced_Regex_Tokenizer('Tokenizer_String_Parser', [
 
 	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
-		(resolver, item, match) => {
-			console.log('SINGLE_QUOTE', match);		//Here we must enter a sub parser - this means we need to do the parser thing
+		(resolver) => {
+			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
+			resolver.leave_sub_tokenizer();
+			resolver[COLUMN_INDEX] += 1;
 		}
 	),
 
-
-
-	new R.Resolution_Rule(new C.Regex_Condition( /\s+/ ),
-		(resolver, item, match) => {
-			console.log('SPACE', match);
+	new R.Default_Rule(
+		(resolver, text) => {
+			resolver.push_token(new PL_TOKEN.Literal(resolver[LINE_INDEX], resolver[COLUMN_INDEX], text));
+			resolver[COLUMN_INDEX] += text.length;
 		}
 	),
 
 
 ]);
 
-for (const token of tokenizer_rule_parser.feed(tokenizer_rules)) {
+
+const tokenizer_rule_definition_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
+
+
+	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
+		(resolver, name) => {
+			resolver.push_token(new PL_TOKEN.Identifier(resolver[LINE_INDEX], resolver[COLUMN_INDEX], name));
+			resolver[COLUMN_INDEX] += name.length;
+		}
+	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /[,]/ ),
+		(resolver) => {
+			resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ','));
+			resolver[COLUMN_INDEX] += 1;
+		}
+	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /[;]/ ),
+		(resolver) => {
+			resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ';'));
+			resolver.leave_sub_tokenizer();
+			resolver[COLUMN_INDEX] += 1;
+		}
+	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
+		(resolver) => {
+			resolver.enter_sub_tokenizer(tokenizer_string_parser, (sub_resolver, sub_result) => {
+				resolver.push_token(new PL_TOKEN.String(resolver[LINE_INDEX], resolver[COLUMN_INDEX], sub_result));
+			});	//We should add a function to handle the result
+			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
+			resolver[COLUMN_INDEX] += 1;
+		}
+	),
+
+	...common_rules,
+
+]);
+
+
+const tokenizer_pending_colon_for_rule = new Advanced_Regex_Tokenizer('Tokenizer_Pending_Colon_For_Rule', [
+	new R.Resolution_Rule(new C.Regex_Condition( /[:]/ ),
+		(resolver) => {
+			resolver.switch_to(tokenizer_rule_definition_parser);
+			resolver[COLUMN_INDEX] += 1;
+		}
+	),
+
+	...common_rules,
+]);
+
+const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
+
+	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
+		(resolver, name) => {
+			resolver.enter_sub_tokenizer(tokenizer_pending_colon_for_rule, (sub_resolver, sub_result) => {
+				resolver.push_token(new PL_TOKEN.Rule_Definition(resolver[LINE_INDEX], resolver[COLUMN_INDEX], name, sub_result));
+			});
+
+			resolver[COLUMN_INDEX] += name.length;
+		}
+	),
+
+	...common_rules,
+
+
+
+]);
+
+
+
+
+
+const rule_parser = new Parser(tokenizer_rules, tokenizer_rule_parser);
+rule_parser[LINE_INDEX] = 0;
+rule_parser[COLUMN_INDEX] = 0;
+console.log(inspect(rule_parser.parse(), {colors: true, depth: null}));
+
+/*for (const token of tokenizer_rule_parser.feed(tokenizer_rules)) {
 	console.log('TOKEN', token);
 }
-
+*/
 
 
 //pl_parser.process_text(language_definition);

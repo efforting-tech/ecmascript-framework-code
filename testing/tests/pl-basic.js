@@ -341,6 +341,8 @@ function serialize_state(object, serializer = new State_Serializer()) {
 	return JSON.stringify(serializer.serialize_object(object));
 }
 
+//NOTE - the serializer should be kept by the scanning transformer so that it can keep the symbol map
+
 
 console.log(serialize_state(rule_parser));
 

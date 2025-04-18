@@ -1,3 +1,4 @@
+// Most of this is deprecated now and should be rewritten
 
 // NEXT STEP - the parser thing
 

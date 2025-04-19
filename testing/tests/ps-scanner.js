@@ -2,6 +2,8 @@ import { Reduction_Scanner } from '../../lib/parsing/scanner.js';
 import * as C from '../../lib/data/conditions.js';
 import * as R from '../../lib/data/rules.js';
 
+import { assert_equality } from '../framework/utils.js'
+
 
 const s = new Reduction_Scanner([
 
@@ -34,11 +36,9 @@ const s = new Reduction_Scanner([
 const test_data = [10, '+', 20, '*', 50]
 
 //Default reduction order is RULE_MAJOR (so * will come before +)
-console.log(s.transform([...test_data])); // [ 1010 ]
+assert_equality(s.transform([...test_data]), [ 1010 ]);
 
 s.reduction_order = 'POSITION_MAJOR';	//Position order, + will come before *
-console.log(s.transform([...test_data])); // [ 1500 ]
+assert_equality(s.transform([...test_data]), [ 1500 ]);
 
 
-
-process.exit(1);

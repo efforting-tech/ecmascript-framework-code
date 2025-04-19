@@ -63,7 +63,7 @@ async function run_program(program, program_arguments=[], report_file='/dev/stdo
 		...extra_info,
 	}
 
-	writeFile(report_file, JSON.stringify(report));
+	await writeFile(report_file, JSON.stringify(report));
 
 
 	await rm(local_temp_directory, { recursive: true, force: true });

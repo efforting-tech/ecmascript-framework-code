@@ -21,8 +21,9 @@ async function run_program(file_list_file ='/dev/stdin') {
 	for (const filename of file_list.split('\n')) {
 		if (filename.length) {
 			const report = await load_report(filename);
-			const icon = report.exit_code ? '❌' : '✅';
-			if (!report.exit_code) {
+			const succeeded = report.exit_code == 0;
+			const icon = succeeded ? '✅' : '❌';
+			if (!succeeded) {
 				failed_count++;
 			}
 			const p_args = inspect(report.program_arguments, { colors: true });

@@ -22,7 +22,6 @@ export function assert_error(function_reference, expected_error = true, message 
 		function_reference();
 	} catch (error) {
 		caught_error = error;
-		console.log(caught_error);
 		if (expected_error === true) {
 			// Assertion passes
 		} else if (expected_error instanceof RegExp) {

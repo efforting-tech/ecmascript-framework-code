@@ -8,6 +8,13 @@ export function assert_equality(value, expected, message = "Assertion failed, ex
 	}
 }
 
+export function assert_properties(value, expected, message = "Assertion failed, expected ${expected_json} but got ${value_json}") {
+	const subset = {};
+	for (const key in expected) {
+		subset[key] = value[key];
+	}
+	assert_equality(subset, expected, message);
+}
 
 
 export function assert_error(function_reference, expected_error = true, message = "Assertion failed: Expected the error \"${inspect(expected_error)}\" but ${caught_error ? 'got ' + inspect(String(caught_error)) : 'did not catch any error'}.") {

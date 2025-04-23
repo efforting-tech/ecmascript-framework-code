@@ -1,16 +1,17 @@
+#Verbosity options
+Q:=@
+MAKE_FLAGS:=--no-print-directory
 
-# TODO - remove temporary first target
-#current: clean parser-language text-tree-processing templates
-current: clean parser-state
-	ls ../test-report/*.json | node ../framework/collate-reports.js
+run_all_tests:
+	$(Q) $(MAKE) $(MAKE_FLAGS) clean
+	$(Q) $(MAKE) $(MAKE_FLAGS) -j report
 
 
+report: parser-language	#TODO - should be "all" but now we are testing specific things
+	$(Q) ls ../test-report/*.json | node ../framework/collate-reports.js
 
-
-report: all
-	ls ../test-report/*.json | node ../framework/collate-reports.js
-
-all: clean test switchable-iterator xml-processing
+#Excluding "test" from "all" for the moment since we haven't added support for expecting failures and we have expected failures in test
+all: switchable-iterator xml-processing text-tree-processing templates parser-language parser-state
 
 test: $(patsubst %.js,../test-report/%.json,$(wildcard test-*.js))
 switchable-iterator: $(patsubst %.js,../test-report/%.json,$(wildcard swit-*.js))
@@ -22,10 +23,10 @@ parser-state: $(patsubst %.js,../test-report/%.json,$(wildcard ps-*.js))
 
 
 clean:
-	rm -rf ../test-report/*
+	$(Q) rm -rf ../test-report/*
 
 ../test-report/%.json: %.js
-	node ../framework/testing.js -O $@ node $<
+	$(Q) node ../framework/testing.js -O $@ node $<
 
 
 

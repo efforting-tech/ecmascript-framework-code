@@ -1,6 +1,6 @@
 // Most of this is deprecated now and should be rewritten
 
-// NEXT STEP - the parser thing
+// NEXT STEP - Line 320
 
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
 import { FPR_Contract } from '../../lib/parsing/contracts.js';
@@ -291,6 +291,19 @@ const token_fprs = new Fixed_Point_Reduction_Scanner([
 ], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('token'));
 
 
+
+const string_contents_fprs = new Fixed_Point_Reduction_Scanner([
+
+	new R.Transform_Rule(
+		new C.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Literal),
+		]), ((scanner, sequence, match) => {
+			match.transform_replace(match.value);
+		}),
+	),
+
+], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('string_contents_fprs'));
+
 const STRING_CONTENTS = Symbol('STRING_CONTENTS');
 
 const string_fprs = new Fixed_Point_Reduction_Scanner([
@@ -301,9 +314,17 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 			new CA.Capture_Sub_Sequence(STRING_CONTENTS),
 			new C.Constructor_is(PL_TOKEN.Quote),
 		]), ((scanner, sequence, match) => {
-			console.log("FOUND", match);
-			process.exit(1);
-			//match.transform_replace(new PL_AST.String(match.value));
+			//console.log("FOUND", match);
+			const contents = [...match.require_capture(STRING_CONTENTS).value];
+
+			string_contents_fprs.transform(contents);	//THe current problem here is that Exact_Match lacks proper tracking for transform to work
+			console.log('AFTER TRANSFORM', contents);
+
+			match.transform_replace(new PL_AST.String('TBD'));	//TODO track source of this AST node
+
+			//contents.transform_replace('HELLO');		//This is just an example which is not possible right now due to limitations of matches.js
+
+
 		}),
 	),
 

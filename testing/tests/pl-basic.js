@@ -2,9 +2,14 @@
 
 // NEXT STEP - the parser thing
 
+import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
+import { FPR_Contract } from '../../lib/parsing/contracts.js';
+
+
 import * as O from '../../lib/data/operators.js';
 import * as R from '../../lib/data/rules.js';
 import * as C from '../../lib/data/conditions.js';
+import * as CA from '../../lib/data/captures.js';
 import { create_block_rule, create_named_definition_rule } from '../../lib/templates/rule-factories.js';
 import { REQUIREMENT_STATE } from '../../lib/data/management.js';
 
@@ -250,10 +255,73 @@ const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parse
 
 
 
+
+
+
+
+class Logging_FPR_Contract extends FPR_Contract {
+
+	constructor(name) {
+		super();
+		Object.assign(this, { name });
+	}
+
+	on_start_transform(scanner, sequence) {
+		console.log("START TRANSFORM", this.name, inspect(sequence, {colors: true, depth: null}));
+		super.on_start_transform(scanner, sequence);
+	}
+
+	on_reduction_made(scanner, sequence) {
+		console.log("REDUCTION MADE", this.name, inspect(sequence, {colors: true, depth: null}));
+		super.on_reduction_made(scanner, sequence);
+	}
+
+}
+
+const token_fprs = new Fixed_Point_Reduction_Scanner([
+	new R.Transform_Rule(
+		new C.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.String),
+		]), ((scanner, sequence, match) => {
+			console.log("FOUND STRING", match);
+			match.transform_replace(new PL_AST.String(match.value));
+		}),
+	),
+
+], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('token'));
+
+
+const STRING_CONTENTS = Symbol('STRING_CONTENTS');
+
+const string_fprs = new Fixed_Point_Reduction_Scanner([
+
+	new R.Transform_Rule(
+		new C.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Quote),
+			new CA.Capture_Sub_Sequence(STRING_CONTENTS),
+			new C.Constructor_is(PL_TOKEN.Quote),
+		]), ((scanner, sequence, match) => {
+			console.log("FOUND", match);
+			process.exit(1);
+			//match.transform_replace(new PL_AST.String(match.value));
+		}),
+	),
+
+], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('string'));
+
+
+
 const rule_parser = new Parser(tokenizer_rules, tokenizer_rule_parser);
 rule_parser[LINE_INDEX] = 0;
 rule_parser[COLUMN_INDEX] = 0;
-console.log(inspect(rule_parser.parse(), {colors: true, depth: null}));
+
+const rule_tokens = rule_parser.parse();
+
+//console.log(inspect(rule_tokens, {colors: true, depth: null}));
+//console.log(inspect(rule_tokens[0].value, {colors: true, depth: null}));
+
+
+string_fprs.transform(rule_tokens[0].value[0].value);
 
 
 

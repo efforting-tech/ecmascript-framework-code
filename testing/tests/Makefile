@@ -7,7 +7,7 @@ run_all_tests:
 	$(Q) $(MAKE) $(MAKE_FLAGS) -j report
 
 
-report: parser-state	#TODO - should be "all" but now we are testing specific things
+report: all	#TODO - should be "all" but now we are testing specific things
 	$(Q) ls ../test-report/*.json | node ../framework/collate-reports.js
 
 #Excluding "test" from "all" for the moment since we haven't added support for expecting failures and we have expected failures in test

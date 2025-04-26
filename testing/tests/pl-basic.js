@@ -5,6 +5,7 @@
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
 import { FPR_Contract } from '../../lib/parsing/contracts.js';
 
+import { sequence_in_place_replacement } from '../../lib/data/transform.js';
 
 import * as O from '../../lib/data/operators.js';
 import * as R from '../../lib/data/rules.js';
@@ -285,7 +286,7 @@ const token_fprs = new Fixed_Point_Reduction_Scanner([
 			new C.Constructor_is(PL_TOKEN.String),
 		]), ((scanner, sequence, match) => {
 			console.log("FOUND STRING", match);
-			match.transform_replace(new PL_AST.String(match.value));
+			sequence_in_place_replacement(match, new PL_AST.String(match.value));
 		}),
 	),
 
@@ -299,7 +300,7 @@ const string_contents_fprs = new Fixed_Point_Reduction_Scanner([
 		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.Literal),
 		]), ((scanner, sequence, match) => {
-			match.transform_replace(match.value);
+			sequence_in_place_replacement(match, match.value);
 		}),
 	),
 
@@ -321,7 +322,10 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 			string_contents_fprs.transform(contents);	//THe current problem here is that Exact_Match lacks proper tracking for transform to work
 			console.log('AFTER TRANSFORM', contents);
 
-			match.transform_replace(new PL_AST.String('TBD'));	//TODO track source of this AST node
+			sequence_in_place_replacement(match, new PL_AST.String('TBD')); //TODO track source of this AST node
+
+			process.exit(1);	//WIP
+
 
 			//contents.transform_replace('HELLO');		//This is just an example which is not possible right now due to limitations of matches.js
 

@@ -1,26 +1,31 @@
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
 import { FPR_Contract } from '../../lib/parsing/contracts.js';
 import * as C from '../../lib/data/conditions.js';
+import * as SC from '../../lib/data/sequence-conditions.js';
 import * as R from '../../lib/data/rules.js';
 
 import { assert_properties, assert_equality, assert_error } from '../framework/utils.js'
+import { sequence_in_place_replacement } from '../../lib/data/transform.js';
 
 
 const test_rules = [
 
 	new R.Transform_Rule(
-		new C.Partial_Sequence([
+		new SC.Partial_Sequence([
 			new C.Value_is('Hello'),
 		]), ((scanner, sequence, match) => {
-			match.transform_replace('World');
+			console.log(match);
+			sequence_in_place_replacement(match, 'World');
+			console.log(match.sequence_reference);
+			console.log();
 		}),
 	),
 
 	new R.Transform_Rule(
-		new C.Partial_Sequence([
+		new SC.Partial_Sequence([
 			new C.Value_is('World'),
 		]), ((scanner, sequence, match) => {
-			match.transform_replace('Hello');
+			sequence_in_place_replacement(match, 'Hello');
 		}),
 	),
 

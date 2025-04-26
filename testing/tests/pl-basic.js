@@ -9,6 +9,7 @@ import { FPR_Contract } from '../../lib/parsing/contracts.js';
 import * as O from '../../lib/data/operators.js';
 import * as R from '../../lib/data/rules.js';
 import * as C from '../../lib/data/conditions.js';
+import * as SC from '../../lib/data/sequence-conditions.js';
 import * as CA from '../../lib/data/captures.js';
 import { create_block_rule, create_named_definition_rule } from '../../lib/templates/rule-factories.js';
 import { REQUIREMENT_STATE } from '../../lib/data/management.js';
@@ -280,7 +281,7 @@ class Logging_FPR_Contract extends FPR_Contract {
 
 const token_fprs = new Fixed_Point_Reduction_Scanner([
 	new R.Transform_Rule(
-		new C.Partial_Sequence([
+		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.String),
 		]), ((scanner, sequence, match) => {
 			console.log("FOUND STRING", match);
@@ -295,7 +296,7 @@ const token_fprs = new Fixed_Point_Reduction_Scanner([
 const string_contents_fprs = new Fixed_Point_Reduction_Scanner([
 
 	new R.Transform_Rule(
-		new C.Partial_Sequence([
+		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.Literal),
 		]), ((scanner, sequence, match) => {
 			match.transform_replace(match.value);
@@ -309,13 +310,13 @@ const STRING_CONTENTS = Symbol('STRING_CONTENTS');
 const string_fprs = new Fixed_Point_Reduction_Scanner([
 
 	new R.Transform_Rule(
-		new C.Partial_Sequence([
+		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.Quote),
-			new CA.Capture_Sub_Sequence(STRING_CONTENTS),
+			new CA.Dynamic_Length_Sub_Sequence(STRING_CONTENTS),
 			new C.Constructor_is(PL_TOKEN.Quote),
 		]), ((scanner, sequence, match) => {
 			//console.log("FOUND", match);
-			const contents = [...match.require_capture(STRING_CONTENTS).value];
+			const contents = [...match.require_capture(STRING_CONTENTS).matched_sequence];
 
 			string_contents_fprs.transform(contents);	//THe current problem here is that Exact_Match lacks proper tracking for transform to work
 			console.log('AFTER TRANSFORM', contents);

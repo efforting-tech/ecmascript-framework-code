@@ -163,6 +163,25 @@ const common_rules = [
 ];
 
 
+
+//Defining these tables are done in a bit contrived way for now - we should use a multi key table instead
+const ESCAPE_LUT = {
+	'0': Symbol('NULL'),
+	'n': Symbol('NEWLINE'),
+	'r': Symbol('CARRIAGE_RETURN'),
+	'\'': Symbol('SINGLE_QUOTE'),
+	'"': Symbol('DOUBLE_QUOTE'),
+}
+
+const ESCAPE_REVERSE_LUT = {
+	[ESCAPE_LUT['0']]: '\0',
+	[ESCAPE_LUT['n']]: '\n',
+	[ESCAPE_LUT['r']]: '\r',
+	[ESCAPE_LUT['\"']]: '\"',
+	[ESCAPE_LUT['"']]: '"',
+};
+
+
 const tokenizer_string_parser = new Advanced_Regex_Tokenizer('Tokenizer_String_Parser', [
 
 	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
@@ -170,6 +189,17 @@ const tokenizer_string_parser = new Advanced_Regex_Tokenizer('Tokenizer_String_P
 			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
 			resolver.leave_sub_tokenizer();
 			resolver[COLUMN_INDEX] += 1;
+		}
+	),
+
+	new R.Resolution_Rule(new C.Regex_Condition( /\\(0|n|r)/ ),	//TODO - SSoT
+		(resolver, escape_sequence) => {
+			const value = ESCAPE_LUT[escape_sequence];
+			if (value === undefined) {
+				throw new Error('Unknown escape')
+			}
+			resolver.push_token(new PL_TOKEN.Escape(resolver[LINE_INDEX], resolver[COLUMN_INDEX], value));
+			resolver[COLUMN_INDEX] += 2;
 		}
 	),
 
@@ -293,14 +323,43 @@ const token_fprs = new Fixed_Point_Reduction_Scanner([
 ], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('token'));
 
 
-
+// NOTE - in this demo we boil it down to the value but we are not tracking source - something we should of course do in a proper implementation
 const string_contents_fprs = new Fixed_Point_Reduction_Scanner([
 
+	// PL_TOKEN.Literal → primitive string
 	new R.Transform_Rule(
 		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.Literal),
 		]), ((scanner, sequence, match) => {
-			sequence_in_place_replacement(match, match.value);
+			const [literal] = match.matched_sequence;
+			sequence_in_place_replacement(match, literal.value);
+		}),
+	),
+
+	// PL_TOKEN.Escape → primitive string
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Escape),
+		]), ((scanner, sequence, match) => {
+			const [escape_sequence] = match.matched_sequence;
+
+			const escape_value = ESCAPE_REVERSE_LUT[escape_sequence.value];
+			if (escape_value === undefined) {
+				throw new Error('Unknown escape')
+			}
+
+			sequence_in_place_replacement(match, escape_value);
+		}),
+	),
+
+	// string, string → merged string
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Type_is('string'),
+			new C.Type_is('string'),
+		]), ((scanner, sequence, match) => {
+			const [left, right] = match.matched_sequence;
+			sequence_in_place_replacement(match, left + right);
 		}),
 	),
 
@@ -316,15 +375,16 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 			new CA.Dynamic_Length_Sub_Sequence(STRING_CONTENTS),
 			new C.Constructor_is(PL_TOKEN.Quote),
 		]), ((scanner, sequence, match) => {
-			//console.log("FOUND", match);
+
 			const contents = [...match.require_capture(STRING_CONTENTS).matched_sequence];
 
 			string_contents_fprs.transform(contents);	//THe current problem here is that Exact_Match lacks proper tracking for transform to work
+
 			console.log('AFTER TRANSFORM', contents);
 
+			process.exit(1);	//WIP
 			sequence_in_place_replacement(match, new PL_AST.String('TBD')); //TODO track source of this AST node
 
-			process.exit(1);	//WIP
 
 
 			//contents.transform_replace('HELLO');		//This is just an example which is not possible right now due to limitations of matches.js
@@ -337,7 +397,12 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 
 
 
-const rule_parser = new Parser(tokenizer_rules, tokenizer_rule_parser);
+//const test_string = tokenizer_rules;
+const test_string = `
+	statement: 'hello\\nworld';
+`
+
+const rule_parser = new Parser(test_string, tokenizer_rule_parser);
 rule_parser[LINE_INDEX] = 0;
 rule_parser[COLUMN_INDEX] = 0;
 
@@ -345,6 +410,7 @@ const rule_tokens = rule_parser.parse();
 
 //console.log(inspect(rule_tokens, {colors: true, depth: null}));
 //console.log(inspect(rule_tokens[0].value, {colors: true, depth: null}));
+
 
 
 string_fprs.transform(rule_tokens[0].value[0].value);

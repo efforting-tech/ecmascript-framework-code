@@ -107,6 +107,14 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		console.log("Found tokenizer:", group_args);
 		const ctx = resolver[CONTEXT_SYMBOL];
 		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name, 'TOKENIZER' );	//TODO - actually create
+
+		const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
+
+		const rule_definition_tokens = (new Rule_Parser(definition, tokenizer_rule_parser)).parse();
+		rule_fprs.transform(rule_definition_tokens);
+
+		console.log('TOKENS!', inspect(rule_definition_tokens, { colors: true, depth: null }));
+
 		//TODO - check what happens if we try to create a tokenizer where there is a group
 
 
@@ -139,7 +147,7 @@ const language_definition = `
 			expression: '«' anything as value '»' ;
 
 `
-
+/*
 //Just for testing rule tokenizer
 const tokenizer_rules = `
 
@@ -149,7 +157,7 @@ const tokenizer_rules = `
 	expression: '«' anything as value '»' ;
 
 `;
-
+*/
 const common_rules = [
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\n+)/ ),
@@ -361,7 +369,7 @@ const rule_value_1_fprs = new Fixed_Point_Reduction_Scanner([
 		}),
 	),
 
-], REDUCTION_ORDER.POSITION_MAJOR, new Logging_FPR_Contract('rule_value_1'));
+], REDUCTION_ORDER.POSITION_MAJOR); //new Logging_FPR_Contract('rule_value_1')
 
 
 
@@ -377,7 +385,7 @@ const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
 			new C.Constructor_is(PL_AST.Identifier),
 		]), ((scanner, sequence, match) => {
 			const [identifier, _as_, alias] = match.matched_sequence;
-			sequence_in_place_replacement(match, new PL_AST.Alias(identifier, alias.value));
+			sequence_in_place_replacement(match, new PL_AST.Capture(identifier, alias.value));
 
 		}),
 	),
@@ -390,7 +398,7 @@ const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
 		}),
 	),
 
-], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('rule_value_2'));
+], REDUCTION_ORDER.RULE_MAJOR); // new Logging_FPR_Contract('rule_value_2')
 
 
 // NOTE - in this demo we boil it down to the value but we are not tracking source - something we should of course do in a proper implementation
@@ -458,7 +466,7 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 		}),
 	),
 
-], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('string'));
+], REDUCTION_ORDER.RULE_MAJOR); // new Logging_FPR_Contract('string')
 
 
 
@@ -485,7 +493,7 @@ const rule_fprs = new Fixed_Point_Reduction_Scanner([
 		}),
 	),
 
-], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('rule'));
+], REDUCTION_ORDER.RULE_MAJOR); // new Logging_FPR_Contract('rule')
 
 
 class Rule_Parser extends Parser {
@@ -502,9 +510,8 @@ class Rule_Parser extends Parser {
 
 
 
-const rule_tokens = (new Rule_Parser(tokenizer_rules, tokenizer_rule_parser)).parse();
-
-rule_fprs.transform(rule_tokens);
+//const rule_tokens = (new Rule_Parser(tokenizer_rules, tokenizer_rule_parser)).parse();
+//rule_fprs.transform(rule_tokens);
 
 //console.log(inspect(rule_tokens, {colors: true, depth: null}));
 //console.log(inspect(rule_tokens[0].value, {colors: true, depth: null}));

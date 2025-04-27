@@ -377,7 +377,7 @@ const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
 			new C.Constructor_is(PL_AST.Identifier),
 		]), ((scanner, sequence, match) => {
 			const [identifier, _as_, alias] = match.matched_sequence;
-			sequence_in_place_replacement(match, new PL_AST.Alias(identifier, alias));
+			sequence_in_place_replacement(match, new PL_AST.Alias(identifier, alias.value));
 
 		}),
 	),

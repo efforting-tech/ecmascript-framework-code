@@ -1,6 +1,17 @@
 // Most of this is deprecated now and should be rewritten
 
-// NEXT STEP - Line 320
+/*
+
+	There are many places where we copy a sequence in order to transform a fresh copy
+	This may not be needed - this was mostly in order to fasciliate source tracking
+	Once we decide how to do source tracking we can figure out if these copies are needed or not
+
+
+*/
+
+//BUG: REDUCTION_ORDER.nonexistent as argument to FPRS constructor does not cause an error (also, we must decide whether we should do early testing (constructor) or runtime testing (reduction). This should go into project wide design principles
+
+
 
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
 import { FPR_Contract } from '../../lib/parsing/contracts.js';
@@ -129,6 +140,7 @@ const language_definition = `
 
 `
 
+//Just for testing rule tokenizer
 const tokenizer_rules = `
 
 	statement: '§' optional_space, 	#This is the start of the thing
@@ -233,7 +245,8 @@ const tokenizer_rule_definition_parser = new Advanced_Regex_Tokenizer('Tokenizer
 
 	new R.Resolution_Rule(new C.Regex_Condition( /[;]/ ),
 		(resolver) => {
-			resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ';'));
+			//NOTE: Let's not push the sentinel token - how we deal with all this depends a bit on how we decide to implement source tracking later on
+			//resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ';'));
 			resolver.leave_sub_tokenizer();
 			resolver[COLUMN_INDEX] += 1;
 		}
@@ -310,17 +323,74 @@ class Logging_FPR_Contract extends FPR_Contract {
 
 }
 
-const token_fprs = new Fixed_Point_Reduction_Scanner([
+
+//First pass will remove comments, transform strings and identifiers
+//TODO - source mapping
+const rule_value_1_fprs = new Fixed_Point_Reduction_Scanner([
+
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Comment),
+		]), ((scanner, sequence, match) => {
+			sequence_in_place_replacement(match);	//Remove
+		}),
+	),
+
+
 	new R.Transform_Rule(
 		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.String),
 		]), ((scanner, sequence, match) => {
-			console.log("FOUND STRING", match);
-			sequence_in_place_replacement(match, new PL_AST.String(match.value));
+
+			const [string] = match.matched_sequence;
+			const string_contents = [...string.value];	//Copy before sub transform
+			string_fprs.transform(string_contents);
+			sequence_in_place_replacement(match, ...string_contents);
+
 		}),
 	),
 
-], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('token'));
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Identifier),
+		]), ((scanner, sequence, match) => {
+
+			const [identifier] = match.matched_sequence;
+			sequence_in_place_replacement(match, new PL_AST.Identifier(identifier.value));
+
+		}),
+	),
+
+], REDUCTION_ORDER.POSITION_MAJOR, new Logging_FPR_Contract('rule_value_1'));
+
+
+
+//Second pass will turn stuff like "stuff as thing" into the proper alias node
+//This must be RULE_MAJOR because once all rules are performed we will get rid of punctuaction commas (they are only for disambiguition which should be reflected in the design for the language)
+//TODO - source mapping
+const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
+
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_AST.Identifier),
+			new C.Conjunction(new C.Constructor_is(PL_AST.Identifier), new C.Property('value', 'as')),
+			new C.Constructor_is(PL_AST.Identifier),
+		]), ((scanner, sequence, match) => {
+			const [identifier, _as_, alias] = match.matched_sequence;
+			sequence_in_place_replacement(match, new PL_AST.Alias(identifier, alias));
+
+		}),
+	),
+
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Conjunction(new C.Constructor_is(PL_TOKEN.Punctuation), new C.Property('value', ',')),
+		]), ((scanner, sequence, match) => {
+			sequence_in_place_replacement(match);
+		}),
+	),
+
+], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('rule_value_2'));
 
 
 // NOTE - in this demo we boil it down to the value but we are not tracking source - something we should of course do in a proper implementation
@@ -363,32 +433,27 @@ const string_contents_fprs = new Fixed_Point_Reduction_Scanner([
 		}),
 	),
 
-], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('string_contents_fprs'));
+], REDUCTION_ORDER.RULE_MAJOR); //new Logging_FPR_Contract('string_contents_fprs')
 
 const STRING_CONTENTS = Symbol('STRING_CONTENTS');
 
 const string_fprs = new Fixed_Point_Reduction_Scanner([
 
 	new R.Transform_Rule(
+		//NOTE - this could in theory be Exact_Sequence since we are matching the entire thing, the problem is Exact_Sequence currently does not support dynamic length captures
 		new SC.Partial_Sequence([
 			new C.Constructor_is(PL_TOKEN.Quote),
 			new CA.Dynamic_Length_Sub_Sequence(STRING_CONTENTS),
 			new C.Constructor_is(PL_TOKEN.Quote),
 		]), ((scanner, sequence, match) => {
 
-			const contents = [...match.require_capture(STRING_CONTENTS).matched_sequence];
+			const contents = [...match.require_capture(STRING_CONTENTS).matched_sequence];	//Copy before change
+			string_contents_fprs.transform(contents);
 
-			string_contents_fprs.transform(contents);	//THe current problem here is that Exact_Match lacks proper tracking for transform to work
-
-			console.log('AFTER TRANSFORM', contents);
-
-			process.exit(1);	//WIP
-			sequence_in_place_replacement(match, new PL_AST.String('TBD')); //TODO track source of this AST node
+			const [primitive_string] = contents;
 
 
-
-			//contents.transform_replace('HELLO');		//This is just an example which is not possible right now due to limitations of matches.js
-
+			sequence_in_place_replacement(match, new PL_AST.String(primitive_string)); //TODO track source of this AST node (source mapping)
 
 		}),
 	),
@@ -397,27 +462,57 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 
 
 
-//const test_string = tokenizer_rules;
-const test_string = `
-	statement: 'hello\\nworld';
-`
+const rule_fprs = new Fixed_Point_Reduction_Scanner([
 
-const rule_parser = new Parser(test_string, tokenizer_rule_parser);
-rule_parser[LINE_INDEX] = 0;
-rule_parser[COLUMN_INDEX] = 0;
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Comment),
+		]), ((scanner, sequence, match) => {
+			sequence_in_place_replacement(match);	//Remove
+		}),
+	),
 
-const rule_tokens = rule_parser.parse();
+	new R.Transform_Rule(
+		new SC.Partial_Sequence([
+			new C.Constructor_is(PL_TOKEN.Rule_Definition),
+		]), ((scanner, sequence, match) => {
+			const [rule_def] = match.matched_sequence;
+			const rule_value = [...rule_def.value];	//Copy rule value before transform
+			rule_value_1_fprs.transform(rule_value);
+			rule_value_2_fprs.transform(rule_value);
+			sequence_in_place_replacement(match, new PL_AST.Rule_Definition(rule_def.name, rule_value));
+
+		}),
+	),
+
+], REDUCTION_ORDER.RULE_MAJOR, new Logging_FPR_Contract('rule'));
+
+
+class Rule_Parser extends Parser {
+	constructor(source, rules) {
+		super(source, rules);
+		Object.assign(this, {
+			[LINE_INDEX]: 0,
+			[COLUMN_INDEX]: 0,
+		});
+
+	}
+
+}
+
+
+
+const rule_tokens = (new Rule_Parser(tokenizer_rules, tokenizer_rule_parser)).parse();
+
+rule_fprs.transform(rule_tokens);
 
 //console.log(inspect(rule_tokens, {colors: true, depth: null}));
 //console.log(inspect(rule_tokens[0].value, {colors: true, depth: null}));
+//string_fprs.transform(rule_tokens[0].value[0].value);
 
 
 
-string_fprs.transform(rule_tokens[0].value[0].value);
-
-
-
-//pl_parser.process_text(language_definition);
+pl_parser.process_text(language_definition);
 //const tokens = token_definition_parser.process_text(token_definition);
 
 //console.log(inspect(tokens, {colors: true, depth: null}));

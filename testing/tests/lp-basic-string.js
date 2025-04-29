@@ -42,4 +42,4 @@ for (const line of lv1.indented_copy(1).lines) {
 }
 
 
-process.exit(1)
+//process.exit(1)

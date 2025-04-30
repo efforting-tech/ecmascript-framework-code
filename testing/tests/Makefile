@@ -7,7 +7,7 @@ run_all_tests:
 	$(Q) $(MAKE) $(MAKE_FLAGS) -j report
 
 
-report: line-processing	#TODO - should be "all" but now we are testing specific things
+report: indent	#TODO - should be "all" but now we are testing specific things
 	$(Q) ls ../test-report/*.json | node ../framework/collate-reports.js
 
 #Excluding "test" from "all" for the moment since we haven't added support for expecting failures and we have expected failures in test
@@ -21,6 +21,7 @@ text-tree-processing: $(patsubst %.js,../test-report/%.json,$(wildcard tt-proces
 templates: $(patsubst %.js,../test-report/%.json,$(wildcard template-*.js))
 parser-language: $(patsubst %.js,../test-report/%.json,$(wildcard pl-*.js))
 parser-state: $(patsubst %.js,../test-report/%.json,$(wildcard ps-*.js))
+indent: $(patsubst %.js,../test-report/%.json,$(wildcard indent-*.js))
 
 
 clean:

@@ -2,7 +2,7 @@ import { assert_equality } from '../framework/utils.js';
 import { Line_Ending } from '../../lib/text/line-endings.js';
 import { inspect } from 'util';
 
-
+//TODO - update to get these from lib
 const posix = new Line_Ending(/\n/, '\n')
 const macos = new Line_Ending(/\r/, '\r')
 const windows = new Line_Ending(/\r\n/, '\r\n')

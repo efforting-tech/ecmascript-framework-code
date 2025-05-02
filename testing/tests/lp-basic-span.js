@@ -18,10 +18,11 @@ for (const line of lv1.lines) {
 
 	const info = {
 		full_line: line.full_line,
-		title_span: [line.title_span_left, line.title_span_right],
+		indent_level: line.indent_level,
+		title_span: line.title_span,
 		title: line.title,
 		title_length: line.title_length,
-		title_column: line.title_column,
+		title_visual_column: line.title_visual_column,
 	}
 
 	console.log(inspect(info, { colors: true, depth: null }));
@@ -32,10 +33,11 @@ console.log('--==[ Second Test ]==--');
 for (const line of lv1.indented_copy(1).lines) {
 	const info = {
 		full_line: line.full_line,
-		title_span: [line.title_span_left, line.title_span_right],
+		indent_level: line.indent_level,
+		title_span: line.title_span,
 		title: line.title,
 		title_length: line.title_length,
-		title_column: line.title_column,
+		title_visual_column: line.title_visual_column,
 	}
 
 	console.log(inspect(info, { colors: true, depth: null }));

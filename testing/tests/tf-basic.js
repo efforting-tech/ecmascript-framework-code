@@ -7,6 +7,7 @@ import { Text_Format } from '../../lib/text/format.js';
 
 import { inspect } from 'util';
 
+
 const test_text_tabs = `
 	Hello World
 	How are you?
@@ -23,7 +24,7 @@ const test_text_spaces = `
 
 
 
-const format_tabs = new Text_Format( POSIX, Tabulators );
+const format_tabs = new Text_Format( POSIX, new Tabulators(4) );
 const format_spaces = new Text_Format( POSIX, new Spaces(4) );
 
 for (const [level, head, title, tail] of format_tabs.iter_level_and_components(test_text_tabs)) {

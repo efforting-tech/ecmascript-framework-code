@@ -1,8 +1,10 @@
 import { assert_equality } from '../framework/utils.js';
 import * as Indent from '../../lib/text/indent.js';
 
+const tabulators = new Indent.Tabulators(4);
+
 assert_equality(
-	Indent.Tabulators.get_head(2),
+	tabulators.get_head(2),
 	'\t\t',
 );
 assert_equality(
@@ -11,7 +13,7 @@ assert_equality(
 );
 
 assert_equality(
-	Indent.Tabulators.get_level_from_head('\t\t'),
+	tabulators.get_level_from_head('\t\t'),
 	2,
 );
 assert_equality(
@@ -20,7 +22,7 @@ assert_equality(
 );
 
 assert_equality(
-	Indent.Tabulators.validate_head('\t\t'),
+	tabulators.validate_head('\t\t'),
 	true,
 );
 assert_equality(
@@ -29,7 +31,7 @@ assert_equality(
 );
 
 assert_equality(
-	Indent.Tabulators.validate_head('          '),
+	tabulators.validate_head('          '),
 	false,
 );
 assert_equality(
@@ -38,7 +40,7 @@ assert_equality(
 );
 
 assert_equality(
-	Indent.Tabulators.to_components('\t\tHello World'),
+	tabulators.to_components('\t\tHello World'),
 	[ '\t\t', 'Hello World' ],
 );
 assert_equality(
@@ -49,7 +51,7 @@ assert_equality(
 
 
 assert_equality(
-	Indent.Tabulators.create_adjusted_head('\t\t', -1),
+	tabulators.create_adjusted_head('\t\t', -1),
 	'\t',
 );
 assert_equality(

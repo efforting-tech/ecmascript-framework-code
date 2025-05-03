@@ -21,8 +21,9 @@ for (const n1 of root.iter_nodes()) {
 }
 
 const [root_node] = root.iter_nodes();
+log.Debug(root_node.title);	// Root
 
-for (const n2 of root_node.iter_nodes()) {
+for (const n2 of root_node.iter_nodes()) {	//This should just yield the same node again (no slicing)
 	log.Debug(n2.owner.to_text());
 }
 

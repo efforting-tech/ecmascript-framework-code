@@ -11,7 +11,7 @@ report: all	#TODO - should be "all" but now we are testing specific things
 	$(Q) ls ../test-report/*.json | node ../framework/collate-reports.js
 
 #Excluding "test" from "all" for the moment since we haven't added support for expecting failures and we have expected failures in test
-all: text-tree-processing #switchable-iterator xml-processing templates parser text
+all: ../test-report/lp-slicing.json #switchable-iterator xml-processing templates parser text
 
 test: $(patsubst %.js,../test-report/%.json,$(wildcard test-*.js))
 

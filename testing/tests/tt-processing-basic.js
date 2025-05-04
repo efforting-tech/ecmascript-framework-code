@@ -1,24 +1,27 @@
+import { assert_equality } from '../framework/utils.js';
 import * as tt_processing from '../../lib/text/tree-processing.js';
 import * as log from '../../lib/debug/console.js';
 
 
-//BUG - something is terribly wrong with our reimplementaiton of the treenodes
+const root = tt_processing.Node.from_string(
+`	Root
 
-const root = tt_processing.Node.from_string(`
-
-	Root
 		Child 1
 			Grand child 1
 		Child 2
 
+	other-root
+		more stuff
 `)
 
 
-log.Debug(root.owner.source);
+assert_equality(root.body.owner.to_text(), '\n\t\tChild 1\n\t\t\tGrand child 1\n\t\tChild 2\n');
+assert_equality([...root.iter_nodes().map(node => node.to_text())], ['\tRoot\n\n\t\tChild 1\n\t\t\tGrand child 1\n\t\tChild 2\n', '\tother-root\n\t\tmore stuff\n']);
 
-for (const n1 of root.iter_nodes()) {
-	log.Debug(n1.owner.to_text());
-}
+
+process.exit(2);
+
+
 
 const [root_node] = root.iter_nodes();
 log.Debug(root_node.title);	// Root

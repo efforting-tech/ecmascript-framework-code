@@ -1,6 +1,7 @@
 #Verbosity options
 Q:=@
 MAKE_FLAGS:=--no-print-directory
+REPORT:=../test-report
 
 run_all_tests:
 	$(Q) $(MAKE) $(MAKE_FLAGS) clean
@@ -8,36 +9,36 @@ run_all_tests:
 
 
 report: all	#TODO - should be "all" but now we are testing specific things
-	$(Q) ls ../test-report/*.json | node ../framework/collate-reports.js
+	$(Q) ls $(REPORT)/*.json | node ../framework/collate-reports.js
 
 #Excluding "test" from "all" for the moment since we haven't added support for expecting failures and we have expected failures in test
-all: ../test-report/tt-processing-basic.json #switchable-iterator xml-processing templates parser text
+all: parser #switchable-iterator xml-processing templates parser text
 
-test: $(patsubst %.js,../test-report/%.json,$(wildcard test-*.js))
+test: $(patsubst %.js,$(REPORT)/%.json,$(wildcard test-*.js))
 
-switchable-iterator: $(patsubst %.js,../test-report/%.json,$(wildcard swit-*.js))
-xml-processing: $(patsubst %.js,../test-report/%.json,$(wildcard xml-processing-*.js))
-templates: $(patsubst %.js,../test-report/%.json,$(wildcard template-*.js))
+switchable-iterator: $(patsubst %.js,$(REPORT)/%.json,$(wildcard swit-*.js))
+xml-processing: $(patsubst %.js,$(REPORT)/%.json,$(wildcard xml-processing-*.js))
+templates: $(patsubst %.js,$(REPORT)/%.json,$(wildcard template-*.js))
 
 parser: parser-language parser-state
 text: indent line-endings text-format line-processing text-tree-processing
 
-line-processing: $(patsubst %.js,../test-report/%.json,$(wildcard lp-*.js))
-text-tree-processing: $(patsubst %.js,../test-report/%.json,$(wildcard tt-processing-*.js))
+line-processing: $(patsubst %.js,$(REPORT)/%.json,$(wildcard lp-*.js))
+text-tree-processing: $(patsubst %.js,$(REPORT)/%.json,$(wildcard tt-processing-*.js))
 
-parser-language: $(patsubst %.js,../test-report/%.json,$(wildcard pl-*.js))
-parser-state: $(patsubst %.js,../test-report/%.json,$(wildcard ps-*.js))
+parser-language: $(patsubst %.js,$(REPORT)/%.json,$(wildcard pl-*.js))
+parser-state: $(patsubst %.js,$(REPORT)/%.json,$(wildcard ps-*.js))
 
-indent: $(patsubst %.js,../test-report/%.json,$(wildcard indent-*.js))
-line-endings: $(patsubst %.js,../test-report/%.json,$(wildcard le-*.js))
-text-format: $(patsubst %.js,../test-report/%.json,$(wildcard tf-*.js))
+indent: $(patsubst %.js,$(REPORT)/%.json,$(wildcard indent-*.js))
+line-endings: $(patsubst %.js,$(REPORT)/%.json,$(wildcard le-*.js))
+text-format: $(patsubst %.js,$(REPORT)/%.json,$(wildcard tf-*.js))
 
 
 
 clean:
-	$(Q) rm -rf ../test-report/*
+	$(Q) rm -rf $(REPORT)/*
 
-../test-report/%.json: %.js
+$(REPORT)/%.json: %.js
 	$(Q) node ../framework/testing.js -O $@ node $<
 
 

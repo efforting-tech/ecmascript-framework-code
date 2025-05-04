@@ -25,7 +25,8 @@ const root = tt_processing.Node.from_string(`
 
 `)
 
-const [root_node] = root.iter_nodes();
+const [root_node] = root.iter_valid_nodes();
+
 const [A, B] = TP.process_tree(root_node.body);
 
 if (A !== 1 || B !== 2) {

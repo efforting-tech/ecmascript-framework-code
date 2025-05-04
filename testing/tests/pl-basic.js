@@ -1,3 +1,5 @@
+import * as log from '../../lib/debug/console.js';
+
 // Most of this is deprecated now and should be rewritten
 
 /*
@@ -88,6 +90,13 @@ const token_definition_parser = new O.Tree_Processor('Token_Definition_Parser', 
 
 const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 
+	new R.Resolution_Rule(new C.Title_Condition(new C.Regex_Condition( /^\s*$/ )),
+		(resolver, item, match) => {
+			console.log("EMPTY");
+		}
+	),
+
+
 	create_block_rule('tokens', (resolver, item, match, group_args) => {
 		const ctx = resolver[CONTEXT_SYMBOL];
 		const group = ctx.group_stack.at(-1);
@@ -98,7 +107,7 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		const ctx = resolver[CONTEXT_SYMBOL];
 		const new_group = group_access_interface.write(ctx.group_stack.at(-1), group_args.name);
 		ctx.group_stack.push(new_group);
-		resolver.process_tree(item.body.body);	//TODO - figure out why we need to do it like this, if we do item.body we will only process the last entry which is a bit weird
+		resolver.process_tree(item.body);	//TODO - figure out why we need to do it like this, if we do item.body we will only process the last entry which is a bit weird
 		ctx.group_stack.pop();
 	}, ...dotted_name_statement_settings),
 
@@ -108,9 +117,13 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		const ctx = resolver[CONTEXT_SYMBOL];
 		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name, 'TOKENIZER' );	//TODO - actually create
 
-		const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
 
-		const rule_definition_tokens = (new Rule_Parser(definition, tokenizer_rule_parser)).parse();
+		//TODO - we should use a range based view here!
+
+		//const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
+		log.Debug(item.body.source.slice(...item.body.span));	//This shows that we can get the span of the body properly
+
+		const rule_definition_tokens = (new Rule_Parser(item.body, tokenizer_rule_parser)).parse();	//item.body is wrong here, we need a rule_parser that doesn't mind operating on a text span rather than a string primitive
 		rule_fprs.transform(rule_definition_tokens);
 
 		console.log('TOKENS!', inspect(rule_definition_tokens, { colors: true, depth: null }));
@@ -291,6 +304,7 @@ const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parse
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
 		(resolver, name) => {
+			log.Debug(name);
 			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
 			resolver.enter_sub_tokenizer(tokenizer_pending_colon_for_rule, (sub_resolver, sub_result) => {
 				resolver.push_token(new PL_TOKEN.Rule_Definition(start_line, start_col, name, sub_result));

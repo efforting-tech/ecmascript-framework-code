@@ -1,9 +1,13 @@
 import { inspect } from 'util';
 
-export function assert_equality(value, expected, message = "Assertion failed, expected ${expected_json} but got ${value_json}") {
-	const expected_json = JSON.stringify(expected);
-	const value_json = JSON.stringify(value);
-	if (expected_json !== value_json) {
+function repr(item) {
+	return inspect(item, {depth: null, colors: true});
+}
+
+export function assert_equality(value, expected, message = "Assertion failed, expected ${expected_repr} but got ${value_repr}") {
+	const expected_repr = repr(expected);
+	const value_repr = repr(value);
+	if (expected_repr !== value_repr) {
 		throw new Error(eval(`\`${message}\``));
 	}
 }

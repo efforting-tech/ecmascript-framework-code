@@ -1,0 +1,37 @@
+General format of definition: `definition { }`
+Start of definitions format (uses symbols for placeholders and js type strings for literals and `→` for explainer separation, `{ }` assmes we care about a body in there):
+These statements can optionally be separated by `;` `[ ]` is used for optional.
+
+Statements:
+'if' name { } → Define interface in a global doc namespace. Contains functions and accessors.
+'get' name '→' → Getter
+'set' name '→' → Setter
+'*'name '→' → Iterator function
+'* →' → JS `*[Symbol.iterator]`
+'dir' path { }  → FS dir
+'file' path { } → FS file
+'C' name ['(' bases ')'] { } → Exported class
+'pC' name ['(' bases ')'] { } → Private class
+
+Relative references:
+verb type name → Define a relationship `verb` with entity `name` of type `type`
+
+Verbs:
+uses → Something we make use of, example `uses if some_interface`
+excludes → This is excluded from uses
+replaces → This replaces anything inherited
+
+
+
+
+if lineop {
+get indent_level → Indent level of `this` if there is non whitespace, otherwise `undefined`
+static from_line_span(owner, span, line_index=undefined, column_index=undefined) → new instance from line span
+}
+dir lib {
+file span-list.js {
+C view {
+uses if lineop;
+}
+}
+}

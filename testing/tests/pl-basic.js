@@ -13,6 +13,12 @@ import * as log from '../../lib/debug/console.js';
 
 //BUG: REDUCTION_ORDER.nonexistent as argument to FPRS constructor does not cause an error (also, we must decide whether we should do early testing (constructor) or runtime testing (reduction). This should go into project wide design principles
 
+/*function compute_span_relative_to(subject_span, relative_to) {
+	const [ssl, ssr] = subject_span;
+	const [rtl, rtr] = relative_to;
+	return [rtl + ssl, rtl + ssr];
+}
+*/
 
 
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../lib/parsing/scanner.js';
@@ -77,11 +83,11 @@ const group_access_interface = new Group_Access_Interface();
 
 const token_definition_parser = new O.Tree_Processor('Token_Definition_Parser', [
 	create_block_rule('default token', (resolver, item, match, group_args) => {
-		return new PL_AST.Default_Token(group_args.name);
+		return new PL_AST.Default_Token(group_args.name.value);
 	}, ...capture_anything),
 
 	create_named_definition_rule((resolver, item, match, group_args) => {
-		return new PL_AST.Regexp_Token(group_args.key, group_args.value);
+		return new PL_AST.Regexp_Token(group_args.key.value, group_args.value.value);
 	}),
 
 ]);
@@ -105,7 +111,7 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 
 	create_block_rule('group', (resolver, item, match, group_args) => {
 		const ctx = resolver[CONTEXT_SYMBOL];
-		const new_group = group_access_interface.write(ctx.group_stack.at(-1), group_args.name);
+		const new_group = group_access_interface.write(ctx.group_stack.at(-1), group_args.name.value);
 		ctx.group_stack.push(new_group);
 		resolver.process_tree(item.body);	//TODO - figure out why we need to do it like this, if we do item.body we will only process the last entry which is a bit weird
 		ctx.group_stack.pop();
@@ -115,13 +121,54 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 	create_block_rule('tokenizer', (resolver, item, match, group_args) => {
 		console.log("Found tokenizer:", group_args);
 		const ctx = resolver[CONTEXT_SYMBOL];
-		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name, 'TOKENIZER' );	//TODO - actually create
+		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name.value, 'TOKENIZER' );	//TODO - actually create
 
 
 		//TODO - we should use a range based view here!
 
+		//NOTE this is just an experiment in slicing for now where we will want a partical body
+
+		const name_span = group_args.name.span_relative_to(item.lines[0].title_span);
+
+		log.Debug(item.lines[0].full_line); // '\t\ttokenizer: embedding\n'
+		log.Debug(name_span);	// [ 99, 108 ]
+		log.Debug(item.owner.source.slice(...name_span)); // 'embedding'
+
+		log.Debug(item.owner.source.slice(name_span[1], item.body.lines.at(-1).tail_span[1])); // "\n\t\t\tstatement: '§' optional_space, anything as value ;\n\n"
+
+
+		const column_index = name_span[0] - item.lines[0].full_span[0];
+		console.log(group_args.name.span, item.lines[0].title_span, item.lines[0].full_span, column_index);
+		console.log(name_span[0] - item.lines[0].full_span[0] );
+		log.Debug(item.owner.source.slice());
+
+		log.Debug(item.lines[0].copy_trimmed_title(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
+		log.Debug(item.lines[0].copy_trimmed_title(column_index).title);		//	'embedding'
+		log.Debug(item.lines[0].copy_trimmed_title(column_index).column_index);	//	13
+
+		//TODO - perhaps make a single copy_trimmed(head=0, title=0, tail=0)
+
+
+
+
+
+
+/*
+		const ts = compute_span_relative_to(match.value.value.indices[1], item.lines[0].title_span);
+		log.Debug(match.value.condition.pattern);
+		log.Debug(match.value.value);
+		log.Debug(match.value.value.indices[1]);
+		log.Debug(ts);
+		log.Debug(item.owner.source.slice(...ts));
+		log.Debug(item.owner.source.slice(...item.lines[0].title_span));
+
+*/
+		process.exit(1);
+
+
+
 		//const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
-		log.Debug(item.body.source.slice(...item.body.span));	//This shows that we can get the span of the body properly
+		log.Debug('span', item.body.source.slice(...item.body.span));	//This shows that we can get the span of the body properly
 
 		const rule_definition_tokens = (new Rule_Parser(item.body, tokenizer_rule_parser)).parse();	//item.body is wrong here, we need a rule_parser that doesn't mind operating on a text span rather than a string primitive
 		rule_fprs.transform(rule_definition_tokens);
@@ -304,7 +351,7 @@ const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parse
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
 		(resolver, name) => {
-			log.Debug(name);
+			log.Debug('name', name);
 			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
 			resolver.enter_sub_tokenizer(tokenizer_pending_colon_for_rule, (sub_resolver, sub_result) => {
 				resolver.push_token(new PL_TOKEN.Rule_Definition(start_line, start_col, name, sub_result));

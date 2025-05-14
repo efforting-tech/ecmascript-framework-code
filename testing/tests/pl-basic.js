@@ -2,6 +2,74 @@ import * as log from '../../lib/debug/console.js';
 
 // Most of this is deprecated now and should be rewritten
 
+
+//TODO - move to lib
+class Table_Printer {
+	constructor(top_format = null, header_format = null, sep_format = null, body_format = null, bottom_format = null) {
+		this.top_format = top_format;
+		this.header_format = header_format;
+		this.sep_format = sep_format;
+		this.body_format = body_format;
+		this.bottom_format = bottom_format;
+	}
+
+	_calc_col_widths(table) {
+		const num_cols = table[0].length;
+		return Array.from({ length: num_cols }, (_, col_index) =>
+			Math.max(...table.map(row => String(row[col_index]).length))
+		);
+	}
+
+	_format_row(row, col_widths, format) {
+		const [left, , middle, right] = format;
+		const line = row.map((cell, i) =>
+			String(cell).padEnd(col_widths[i])
+		).join(middle);
+		return left + line + right;
+	}
+
+	_print_separator(col_widths, format) {
+		const [left, fill, middle, right] = format;
+		const line = col_widths.map(w => fill.repeat(w)).join(middle);
+		console.log(left + line + right);
+	}
+
+	print(table) {
+		const col_widths = this._calc_col_widths(table);
+		const [header, ...rows] = table;
+
+		if (this.top_format) {
+			this._print_separator(col_widths, this.top_format);
+		}
+
+		if (this.header_format) {
+			console.log(this._format_row(header, col_widths, this.header_format));
+		}
+
+		if (this.sep_format) {
+			this._print_separator(col_widths, this.sep_format);
+		}
+
+		if (this.body_format) {
+			for (const row of rows) {
+				console.log(this._format_row(row, col_widths, this.body_format));
+			}
+		}
+
+		if (this.bottom_format) {
+			this._print_separator(col_widths, this.bottom_format);
+		}
+	}
+}
+
+const TP = new Table_Printer(
+	null,
+	['┃ ', ' ', ' ┃ ', ' ┃'],
+	['┣━', '━', '━╋━', '━┫'],
+	['┃ ', ' ', ' ┃ ', ' ┃'],
+	null,
+);
+
 /*
 
 	There are many places where we copy a sequence in order to transform a fresh copy
@@ -142,13 +210,64 @@ const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		console.log(name_span[0] - item.lines[0].full_span[0] );
 		log.Debug(item.owner.source.slice());
 
-		log.Debug(item.lines[0].copy_trimmed_title(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
+/*		log.Debug(item.lines[0].copy_trimmed_title(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
 		log.Debug(item.lines[0].copy_trimmed_title(column_index).title);		//	'embedding'
 		log.Debug(item.lines[0].copy_trimmed_title(column_index).column_index);	//	13
+*/
+		log.Debug(item.lines[0].copy_trimmed(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
+		log.Debug(item.lines[0].copy_trimmed(column_index).title);		//	'embedding'
+		log.Debug(item.lines[0].copy_trimmed(column_index).column_index);	//	13
+
 
 		//TODO - perhaps make a single copy_trimmed(head=0, title=0, tail=0)
 
+		console.log('===');
 
+		const args_to_test = [
+			[0, 0],
+			[1, 0],
+			[0, 1],
+			[1, 1],
+
+			[0, 0],
+			[3, 0],
+			[0, 3],
+			[3, 3],
+
+
+		];
+
+		const result_table = [['Arguments', 'Column Index', 'Full Line', 'Head', 'Title', 'Tail']];
+
+
+		for (const args of args_to_test) {
+			const result = item.lines[0].copy_trimmed(...args);
+
+			result_table.push([
+				`${args}`,
+				`${JSON.stringify(result.column_index)}`,
+				`${JSON.stringify(result.full_line)}`,
+				`${JSON.stringify(result.head)}`,
+				`${JSON.stringify(result.title)}`,
+				`${JSON.stringify(result.tail)}`,
+			]);
+
+		}
+
+
+		TP.print(result_table);
+
+
+/*		log.Debug(item.lines[0].copy_trimmed(0, 0, 0, 0).full_line);
+		log.Debug(item.lines[0].copy_trimmed(1, 0, 0, 0).full_line);
+		console.log('---');
+
+		log.Debug(item.lines[0].copy_trimmed(5, 0, 0, 0).full_line);
+		log.Debug(item.lines[0].copy_trimmed(0, 5, 0, 0).full_line);
+		log.Debug(item.lines[0].copy_trimmed(0, 0, 5, 0).full_line);
+		log.Debug(item.lines[0].copy_trimmed(0, 0, 0, 5).full_line);
+
+*/
 
 
 

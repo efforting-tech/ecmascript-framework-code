@@ -170,10 +170,7 @@ const ESCAPE_LUT_VIEWS = {
 	symbol_by_escape: new Simple_Mapping('escape', 'symbol'),
 	repr_by_symbol: new Simple_Mapping('symbol', 'representation'),
 	desc_by_symbol: new Simple_Mapping('symbol', 'description'),
-//	repr_by_name: new Lambda_Object_Mapping((row) => row.symbol.description, 'representation'),
-	repr_by_name: new Lambda_Object_Mapping((row) => row.symbol.description, (row) => row.representation),
-
-
+	repr_by_name: new Lambda_Object_Mapping((row) => row.symbol.description, 'representation'),
 };
 
 

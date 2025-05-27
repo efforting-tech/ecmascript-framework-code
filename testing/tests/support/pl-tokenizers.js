@@ -2,35 +2,19 @@ import * as R from '../../../lib/data/rules.js';
 import * as C from '../../../lib/data/conditions.js';
 import * as PL_TOKEN from '../../../lib/parsing/tokens.js';
 import { Advanced_Regex_Tokenizer }  from '../../../lib/parsing/regexp-tokenizer.js';
+import { ESCAPE_LUT_GENERIC } from './pl-escapes.js';
+
+const ESCAPE_LUT = ESCAPE_LUT_GENERIC.get_view('symbol_by_escape');
 
 
 export const LINE_INDEX = Symbol('LINE_INDEX');
 export const COLUMN_INDEX = Symbol('COLUMN_INDEX');
 
 
+
+
 //TODO - remove after debugging
 import * as log from '../../../lib/debug/console.js';
-
-
-
-//Defining these tables are done in a bit contrived way for now - we should use a multi key table instead
-const ESCAPE_LUT = {
-	'0': Symbol('NULL'),
-	'n': Symbol('NEWLINE'),
-	'r': Symbol('CARRIAGE_RETURN'),
-	'\'': Symbol('SINGLE_QUOTE'),
-	'"': Symbol('DOUBLE_QUOTE'),
-}
-
-const ESCAPE_REVERSE_LUT = {
-	[ESCAPE_LUT['0']]: '\0',
-	[ESCAPE_LUT['n']]: '\n',
-	[ESCAPE_LUT['r']]: '\r',
-	[ESCAPE_LUT["'"]]: "'",
-	[ESCAPE_LUT['"']]: '"',
-};
-
-
 
 
 const common_rules = [

@@ -9,6 +9,8 @@ const tokenizer_rules = `
 
 	expression: '«' anything as value '»' ;
 
+	escapes: 'newline: \\n, null: \\0';
+
 `;
 
 const rule_tokens = (new Rule_Parser(tokenizer_rules, Rule_Tokenizer)).parse();

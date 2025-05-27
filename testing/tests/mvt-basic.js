@@ -1,4 +1,4 @@
-
+import * as SIC from '../../lib/data/simple-conditions.js';
 
 //This view assume immutable table
 class Simple_Mapping {
@@ -7,7 +7,6 @@ class Simple_Mapping {
     }
 
     create_view(table, name) {
-
         const src_id = table.column_indices[this.source];
         const dest_id = table.column_indices[this.dest];
         const lut = {};
@@ -28,12 +27,9 @@ class Multi_View_Table {
         }
 
         Object.assign(this, { rows, columns, column_indices, views, view_factories });
-
-
     }
 
     get_view(name) {
-
         const view = this.views[name];
         if (view) {
             return view;
@@ -41,9 +37,26 @@ class Multi_View_Table {
             const new_view = this.views[name] = this.view_factories[name].create_view(this, name);
             return new_view;
         }
+    }
 
+    push(...rows) {
+        //TODO - verify columns widths or not this functions responsibility?
+        this.rows.push(...rows);
+    }
 
+    static merge(first, ...remaining_tables_to_join) {
 
+        const result = new this([...first.rows], [...first.columns], {...first.view_factories});
+
+        for (const table of remaining_tables_to_join) {
+            if (!SIC.Array_Equals(table.columns, result.columns)) {
+                throw new Error(`Column mismatch - ${result.columns} ≠ ${table.columns}`);
+            }
+            Object.assign(result.view_factories, table.view_factories);
+            result.push(...table.rows);
+        }
+
+        return result;
     }
 
     static from_values(columns_and_values, width, view_factories={}) {
@@ -75,5 +88,29 @@ const ESCAPE_LUT_COMMON = Multi_View_Table.from_values([
 });
 
 
+const symbol_DOUBLE_QUOTE = Symbol('DOUBLE_QUOTE');
+const symbol_SINGLE_QUOTE = Symbol('SINGLE_QUOTE');
+const desc_DOUBLE_QUOTE = 'Double quotation mark';
+const desc_SINGLE_QUOTE = 'Single quotation mark';
 
-console.log(ESCAPE_LUT_COMMON.get_view('desc_by_symbol'));
+const ESCAPE_LUT_SINGLE_QUOTED = Multi_View_Table.from_values([
+    'escape',  'symbol',                    'representation',   'description',
+/*   ------      ------                      --------------      -----------    */
+    '"',        symbol_DOUBLE_QUOTE,        '"',                desc_DOUBLE_QUOTE,
+    "'",        symbol_SINGLE_QUOTE,        "\\'",              desc_SINGLE_QUOTE,
+], 4);
+
+const ESCAPE_LUT_DOUBLE_QUOTED = Multi_View_Table.from_values([
+    'escape',  'symbol',                    'representation',   'description',
+/*   ------      ------                      --------------      -----------    */
+    '"',        symbol_DOUBLE_QUOTE,        '\\"',              desc_DOUBLE_QUOTE,
+    "'",        symbol_SINGLE_QUOTE,        "'",                desc_SINGLE_QUOTE,
+], 4);
+
+
+
+
+
+//console.log(ESCAPE_LUT_COMMON.get_view('desc_by_symbol'));
+
+console.log( Multi_View_Table.merge(ESCAPE_LUT_COMMON, ESCAPE_LUT_SINGLE_QUOTED).get_view('desc_by_symbol'));

@@ -1,8 +1,8 @@
 import { Group, group_access_interface } from './support/pl-records.js';
 import { pl_parser } from './support/pl-parser.js';
+import { language_definition_1 } from './support/pl-examples.js';
 
 // Most of this is deprecated now and should be rewritten
-
 
 /*
 
@@ -49,12 +49,6 @@ import { Advanced_Regex_Tokenizer }  from '../../lib/parsing/regexp-tokenizer.js
 import { inspect } from 'util';
 
 
-
-
-
-
-
-
 //TODO - possibly utilize stack_channel (or something else?)
 
 const root_group = new Group('root');
@@ -62,181 +56,6 @@ pl_parser[CONTEXT_SYMBOL] = {
 	root: root_group,
 	group_stack: [root_group],
 }
-
-
-const language_definition = `
-	tokens:
-		optional_space: /(\s*)/
-		default token: anything
-
-	group: template.basic
-
-		tokenizer: embedding
-			statement: '§' optional_space, anything as value ;
-
-		tokenizer: body
-			expression: '«' anything as value '»' ;
-
-`
-/*
-//Just for testing rule tokenizer
-const tokenizer_rules = `
-
-	statement: '§' optional_space, 	#This is the start of the thing
-		anything as value ;	#Here is more stuff
-
-	expression: '«' anything as value '»' ;
-
-`;
-*/
-const common_rules = [
-
-	new R.Resolution_Rule(new C.Regex_Condition( /(\n+)/ ),
-		(resolver, newlines) => {
-			resolver[LINE_INDEX] += newlines.length;
-			resolver[COLUMN_INDEX] = 0;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /([\t ])+/ ),
-		(resolver, spaces) => {
-			resolver[COLUMN_INDEX] += spaces.length;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /\#(.*)$/m ),
-		(resolver, comment) => {
-			resolver.push_token(new PL_TOKEN.Comment(resolver[LINE_INDEX], resolver[COLUMN_INDEX], comment));
-			resolver[COLUMN_INDEX] += 1 + comment.length;
-		}
-	),
-
-];
-
-
-
-//Defining these tables are done in a bit contrived way for now - we should use a multi key table instead
-const ESCAPE_LUT = {
-	'0': Symbol('NULL'),
-	'n': Symbol('NEWLINE'),
-	'r': Symbol('CARRIAGE_RETURN'),
-	'\'': Symbol('SINGLE_QUOTE'),
-	'"': Symbol('DOUBLE_QUOTE'),
-}
-
-const ESCAPE_REVERSE_LUT = {
-	[ESCAPE_LUT['0']]: '\0',
-	[ESCAPE_LUT['n']]: '\n',
-	[ESCAPE_LUT['r']]: '\r',
-	[ESCAPE_LUT['\"']]: '\"',
-	[ESCAPE_LUT['"']]: '"',
-};
-
-
-const tokenizer_string_parser = new Advanced_Regex_Tokenizer('Tokenizer_String_Parser', [
-
-	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
-		(resolver) => {
-			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
-			resolver.leave_sub_tokenizer();
-			resolver[COLUMN_INDEX] += 1;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /\\(0|n|r)/ ),	//TODO - SSoT
-		(resolver, escape_sequence) => {
-			const value = ESCAPE_LUT[escape_sequence];
-			if (value === undefined) {
-				throw new Error('Unknown escape')
-			}
-			resolver.push_token(new PL_TOKEN.Escape(resolver[LINE_INDEX], resolver[COLUMN_INDEX], value));
-			resolver[COLUMN_INDEX] += 2;
-		}
-	),
-
-	new R.Default_Rule(
-		(resolver, text) => {
-			resolver.push_token(new PL_TOKEN.Literal(resolver[LINE_INDEX], resolver[COLUMN_INDEX], text));
-			resolver[COLUMN_INDEX] += text.length;
-		}
-	),
-
-
-]);
-
-
-const tokenizer_rule_definition_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
-
-
-	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
-		(resolver, name) => {
-			resolver.push_token(new PL_TOKEN.Identifier(resolver[LINE_INDEX], resolver[COLUMN_INDEX], name));
-			resolver[COLUMN_INDEX] += name.length;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /[,]/ ),
-		(resolver) => {
-			resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ','));
-			resolver[COLUMN_INDEX] += 1;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /[;]/ ),
-		(resolver) => {
-			//NOTE: Let's not push the sentinel token - how we deal with all this depends a bit on how we decide to implement source tracking later on
-			//resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ';'));
-			resolver.leave_sub_tokenizer();
-			resolver[COLUMN_INDEX] += 1;
-		}
-	),
-
-	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
-		(resolver) => {
-			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
-			resolver.enter_sub_tokenizer(tokenizer_string_parser, (sub_resolver, sub_result) => {
-				resolver.push_token(new PL_TOKEN.String(start_line, start_col, sub_result));
-			});	//We should add a function to handle the result
-			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
-			resolver[COLUMN_INDEX] += 1;
-		}
-	),
-
-	...common_rules,
-
-]);
-
-
-const tokenizer_pending_colon_for_rule = new Advanced_Regex_Tokenizer('Tokenizer_Pending_Colon_For_Rule', [
-	new R.Resolution_Rule(new C.Regex_Condition( /[:]/ ),
-		(resolver) => {
-			resolver.switch_to(tokenizer_rule_definition_parser);
-			resolver[COLUMN_INDEX] += 1;
-		}
-	),
-
-	...common_rules,
-]);
-
-const tokenizer_rule_parser = new Advanced_Regex_Tokenizer('Tokenizer_Rule_Parser', [
-
-	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
-		(resolver, name) => {
-			log.Debug('name', name);
-			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
-			resolver.enter_sub_tokenizer(tokenizer_pending_colon_for_rule, (sub_resolver, sub_result) => {
-				resolver.push_token(new PL_TOKEN.Rule_Definition(start_line, start_col, name, sub_result));
-			});
-
-			resolver[COLUMN_INDEX] += name.length;
-		}
-	),
-
-	...common_rules,
-
-
-
-]);
 
 
 
@@ -428,18 +247,6 @@ const rule_fprs = new Fixed_Point_Reduction_Scanner([
 ], REDUCTION_ORDER.RULE_MAJOR); // new Logging_FPR_Contract('rule')
 
 
-class Rule_Parser extends Parser {
-	constructor(source, rules) {
-		super(source, rules);
-		Object.assign(this, {
-			[LINE_INDEX]: 0,
-			[COLUMN_INDEX]: 0,
-		});
-
-	}
-
-}
-
 
 
 //const rule_tokens = (new Rule_Parser(tokenizer_rules, tokenizer_rule_parser)).parse();
@@ -451,7 +258,7 @@ class Rule_Parser extends Parser {
 
 
 
-pl_parser.process_text(language_definition);
+pl_parser.process_text(language_definition_1);
 //const tokens = token_definition_parser.process_text(token_definition);
 
 //console.log(inspect(tokens, {colors: true, depth: null}));

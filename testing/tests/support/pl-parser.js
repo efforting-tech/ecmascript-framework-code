@@ -22,11 +22,6 @@ const dotted_name_statement_settings = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREME
 const capture_anything = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREMENT_STATE.REQUIRED, REQUIREMENT_STATE.NOT_ALLOWED, true, /.+/];
 
 
-/*
-const LINE_INDEX = Symbol('LINE_INDEX');
-const COLUMN_INDEX = Symbol('COLUMN_INDEX');
-
-*/
 
 
 export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [

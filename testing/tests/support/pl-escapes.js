@@ -53,4 +53,3 @@ export const ESCAPE_LUT_DQ = ESCAPE_LUT_TEMPLATE.render({
 
 export const ESCAPE_TOKEN_LUT = ESCAPE_LUT_GENERIC.get_view('token_by_name');
 
-console.log(ESCAPE_TOKEN_LUT);

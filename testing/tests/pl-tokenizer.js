@@ -15,3 +15,5 @@ const tokenizer_rules = `
 
 const rule_tokens = (new Rule_Parser(tokenizer_rules, Rule_Tokenizer)).parse();
 
+console.log(rule_tokens);
+

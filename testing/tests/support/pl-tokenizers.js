@@ -12,11 +12,6 @@ export const COLUMN_INDEX = Symbol('COLUMN_INDEX');
 
 
 
-
-//TODO - remove after debugging
-import * as log from '../../../lib/debug/console.js';
-
-
 const common_rules = [
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\n+)/ ),
@@ -129,7 +124,6 @@ export const Rule_Tokenizer = new Advanced_Regex_Tokenizer('Rule_TokenizerTokeni
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
 		(resolver, name) => {
-			log.Debug('name', name);
 			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
 			resolver.enter_sub_tokenizer(Pending_Colon_Tokenizer, (sub_resolver, sub_result) => {
 				resolver.push_token(new PL_TOKEN.Rule_Definition(start_line, start_col, name, sub_result));

@@ -6,31 +6,27 @@ import { ESCAPE_LUT_GENERIC } from './pl-escapes.js';
 
 const ESCAPE_LUT = ESCAPE_LUT_GENERIC.get_view('symbol_by_escape');
 
-
-export const LINE_INDEX = Symbol('LINE_INDEX');
-export const COLUMN_INDEX = Symbol('COLUMN_INDEX');
-
+const FROM_SUB_RESULT = Symbol('FROM_SUB_RESULT');
 
 
 const common_rules = [
 
-	new R.Resolution_Rule(new C.Regex_Condition( /(\n+)/ ),
-		(resolver, newlines) => {
-			resolver[LINE_INDEX] += newlines.length;
-			resolver[COLUMN_INDEX] = 0;
+	//To be determined - option 1 - keep whitespace tokens
+	/*
+	new R.Resolution_Rule(new C.Regex_Condition( /(\s+)/ ),
+		(resolver, space) => {
+			resolver.push_token(new PL_TOKEN.Whitespace(resolver.pending_match, space));
 		}
 	),
+	*/
 
-	new R.Resolution_Rule(new C.Regex_Condition( /([\t ])+/ ),
-		(resolver, spaces) => {
-			resolver[COLUMN_INDEX] += spaces.length;
-		}
-	),
+	// Option 2 - just ignore them (but allow them) - this gets cleaner output and we can recover whitespace later but this hinges on whitespace being the only token that we treat like this
+	new R.Resolution_Rule(new C.Regex_Condition( /(\s+)/ )),
+
 
 	new R.Resolution_Rule(new C.Regex_Condition( /\#(.*)$/m ),
 		(resolver, comment) => {
-			resolver.push_token(new PL_TOKEN.Comment(resolver[LINE_INDEX], resolver[COLUMN_INDEX], comment));
-			resolver[COLUMN_INDEX] += 1 + comment.length;
+			resolver.push_token(new PL_TOKEN.Comment(resolver.pending_match, comment));
 		}
 	),
 
@@ -41,9 +37,8 @@ export const String_Tokenizer = new Advanced_Regex_Tokenizer('String_Tokenizer',
 
 	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
 		(resolver) => {
-			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
+			resolver.push_token(new PL_TOKEN.Quote(resolver.pending_match, '\''));
 			resolver.leave_sub_tokenizer();
-			resolver[COLUMN_INDEX] += 1;
 		}
 	),
 
@@ -53,15 +48,13 @@ export const String_Tokenizer = new Advanced_Regex_Tokenizer('String_Tokenizer',
 			if (value === undefined) {
 				throw new Error('Unknown escape')
 			}
-			resolver.push_token(new PL_TOKEN.Escape(resolver[LINE_INDEX], resolver[COLUMN_INDEX], value));
-			resolver[COLUMN_INDEX] += 2;
+			resolver.push_token(new PL_TOKEN.Escape(resolver.pending_match, value));
 		}
 	),
 
 	new R.Default_Rule(
 		(resolver, text) => {
-			resolver.push_token(new PL_TOKEN.Literal(resolver[LINE_INDEX], resolver[COLUMN_INDEX], text));
-			resolver[COLUMN_INDEX] += text.length;
+			resolver.push_token(new PL_TOKEN.Literal(resolver.pending_match, text));
 		}
 	),
 ]);
@@ -72,35 +65,30 @@ export const Rule_Definition_Tokenizer = new Advanced_Regex_Tokenizer('Rule_Defi
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
 		(resolver, name) => {
-			resolver.push_token(new PL_TOKEN.Identifier(resolver[LINE_INDEX], resolver[COLUMN_INDEX], name));
-			resolver[COLUMN_INDEX] += name.length;
+			resolver.push_token(new PL_TOKEN.Identifier(resolver.pending_match, name));
 		}
 	),
 
 	new R.Resolution_Rule(new C.Regex_Condition( /[,]/ ),
 		(resolver) => {
-			resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ','));
-			resolver[COLUMN_INDEX] += 1;
+			resolver.push_token(new PL_TOKEN.Punctuation(resolver.pending_match, ','));
 		}
 	),
 
 	new R.Resolution_Rule(new C.Regex_Condition( /[;]/ ),
 		(resolver) => {
 			//NOTE: Let's not push the sentinel token - how we deal with all this depends a bit on how we decide to implement source tracking later on
-			//resolver.push_token(new PL_TOKEN.Punctuation(resolver[LINE_INDEX], resolver[COLUMN_INDEX], ';'));
+			//resolver.push_token(new PL_TOKEN.Punctuation(resolver.pending_match, ';'));
 			resolver.leave_sub_tokenizer();
-			resolver[COLUMN_INDEX] += 1;
 		}
 	),
 
 	new R.Resolution_Rule(new C.Regex_Condition( /'/ ),
 		(resolver) => {
-			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
 			resolver.enter_sub_tokenizer(String_Tokenizer, (sub_resolver, sub_result) => {
-				resolver.push_token(new PL_TOKEN.String(start_line, start_col, sub_result));
-			});	//We should add a function to handle the result
-			resolver.push_token(new PL_TOKEN.Quote(resolver[LINE_INDEX], resolver[COLUMN_INDEX], '\''));
-			resolver[COLUMN_INDEX] += 1;
+				resolver.push_token(new PL_TOKEN.String(FROM_SUB_RESULT, sub_result));
+			});
+			resolver.push_token(new PL_TOKEN.Quote(resolver.pending_match, '\''));
 		}
 	),
 
@@ -113,7 +101,6 @@ export const Pending_Colon_Tokenizer = new Advanced_Regex_Tokenizer('Pending_Col
 	new R.Resolution_Rule(new C.Regex_Condition( /[:]/ ),
 		(resolver) => {
 			resolver.switch_to(Rule_Definition_Tokenizer);
-			resolver[COLUMN_INDEX] += 1;
 		}
 	),
 
@@ -124,12 +111,9 @@ export const Rule_Tokenizer = new Advanced_Regex_Tokenizer('Rule_TokenizerTokeni
 
 	new R.Resolution_Rule(new C.Regex_Condition( /(\w+)/ ),
 		(resolver, name) => {
-			const [start_line, start_col] = [resolver[LINE_INDEX], resolver[COLUMN_INDEX]];
 			resolver.enter_sub_tokenizer(Pending_Colon_Tokenizer, (sub_resolver, sub_result) => {
-				resolver.push_token(new PL_TOKEN.Rule_Definition(start_line, start_col, name, sub_result));
+				resolver.push_token(new PL_TOKEN.Rule_Definition(FROM_SUB_RESULT, name, sub_result));
 			});
-
-			resolver[COLUMN_INDEX] += name.length;
 		}
 	),
 

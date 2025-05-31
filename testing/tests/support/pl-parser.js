@@ -3,6 +3,7 @@ import * as R from '../../../lib/data/rules.js';
 import * as C from '../../../lib/data/conditions.js';
 import * as PL_AST from '../../../lib/parsing/ast.js';
 
+import { Rule_Parser } from './pl-rule-parser.js';
 import { create_block_rule, create_named_definition_rule } from '../../../lib/templates/rule-factories.js';
 import { REQUIREMENT_STATE } from '../../../lib/data/management.js';
 import { CONTEXT_SYMBOL } from '../../../lib/templates/context.js';
@@ -144,12 +145,13 @@ export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		log.Debug(item.owner.source.slice(...item.lines[0].title_span));
 
 */
-		process.exit(1);
 
 
 
 		//const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
 		log.Debug('span', item.body.source.slice(...item.body.span));	//This shows that we can get the span of the body properly
+
+		console.log(item.body.span);
 
 		const rule_definition_tokens = (new Rule_Parser(item.body, tokenizer_rule_parser)).parse();	//item.body is wrong here, we need a rule_parser that doesn't mind operating on a text span rather than a string primitive
 		rule_fprs.transform(rule_definition_tokens);

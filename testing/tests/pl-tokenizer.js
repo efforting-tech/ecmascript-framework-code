@@ -58,7 +58,8 @@ function highlight_error_in_text_based_on_index(lci, index, message) {
 const lci = new Line_Column_Indexer(tokenizer_rules, 1);
 
 try {
-	const rule_tokens = (new Rule_Parser(tokenizer_rules, Rule_Tokenizer)).parse();
+	//NOTE: showcasing how to operate on a sub span [5, 100) (js regexp has no settable end boundary but this will work around that limitation)
+	const rule_tokens = (new Rule_Parser(tokenizer_rules.slice(0, 100), Rule_Tokenizer, 5)).parse();
 	console.log(rule_tokens[0]);
 } catch (err) {
 	if (err instanceof Parsing_Error) {

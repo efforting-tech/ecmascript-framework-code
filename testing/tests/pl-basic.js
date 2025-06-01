@@ -40,4 +40,4 @@ pl_parser[CONTEXT_SYMBOL] = assign_property_stack({
 
 pl_parser.process_text(language_definition_1);
 
-log.Debug(group_directory.get_dir('template.basic').value.members[1].rule_definitions[0].value);
+console.log(group_directory.get_dir('template.basic').value.members[1].rule_definitions[0].value);

@@ -14,3 +14,15 @@ export const language_definition_1 = `
 			expression: '«' anything as value '»' ;
 
 `
+
+
+export const ld2 = `
+
+	token table: common
+		-whitespace: /\s+/
+		comment: /\#(.*)$/m
+
+
+
+
+`

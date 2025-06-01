@@ -8,6 +8,7 @@ export const language_definition_1 = `
 
 		tokenizer: embedding
 			statement: '§' optional_space, anything as value ;
+			meta: '§§' anything as metadata ;
 
 		tokenizer: body
 			expression: '«' anything as value '»' ;

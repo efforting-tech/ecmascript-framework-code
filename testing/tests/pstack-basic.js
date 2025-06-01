@@ -17,5 +17,7 @@ const s = new State(['cat', 'dog'], {hello: 'world'} );
 console.log(s);
 s.stack.push({ users: ['other'], documents: DELETE_PROPERTY, new_thing: 123 });
 console.log(s);
+
+
 console.log(s.stack.pop());
 console.log(s);

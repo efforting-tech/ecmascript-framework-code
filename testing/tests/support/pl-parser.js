@@ -36,25 +36,29 @@ export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 
 	create_block_rule('tokens', (resolver, item, match, group_args) => {
 		const ctx = resolver[CONTEXT_SYMBOL];
-		const group = ctx.group_stack.at(-1);
-		group.token_table = new PL_AST.Token_Table(token_definition_parser.process_tree(item.body));
+		ctx.target.members.push(new PL_AST.Token_Table(item, token_definition_parser.process_tree(item.body)));
 	}, ...concrete_statement_settings),
 
 	create_block_rule('group', (resolver, item, match, group_args) => {
 		const ctx = resolver[CONTEXT_SYMBOL];
-		const new_group = group_access_interface.write(ctx.group_stack.at(-1), group_args.name.value);
-		ctx.group_stack.push(new_group);
-		resolver.process_tree(item.body);	//TODO - figure out why we need to do it like this, if we do item.body we will only process the last entry which is a bit weird
-		ctx.group_stack.pop();
+		const pending_group_dir = ctx.current_group.mkdir(group_args.name.value);
+		const pending_group = new PL_AST.Group(item, pending_group_dir);
+		pending_group_dir.value = pending_group;
+		ctx.stack.push({current_group: pending_group_dir, target: pending_group});
+		resolver.process_tree(item.body);
+		ctx.stack.pop();
+
+
 	}, ...dotted_name_statement_settings),
 
 
 	create_block_rule('tokenizer', (resolver, item, match, group_args) => {
-		//console.log("Found tokenizer:", group_args);
 		const ctx = resolver[CONTEXT_SYMBOL];
-		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name.value, 'TOKENIZER' );	//TODO - actually create
 
-		const name_span = group_args.name.span_relative_to(item.lines[0].title_span);
+		const new_tokenizer = new PL_AST.Tokenizer(item, group_args.name.value);
+		ctx.target.members.push(new_tokenizer);
+
+		//const name_span = group_args.name.span_relative_to(item.lines[0].title_span);
 
 		//console.log(item.body.span);
 		const [body_start, body_end] = item.body.span;
@@ -62,14 +66,10 @@ export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 
 		//log.Debug(rule_definition_tokens);
 
-		console.log(item.title);
-		console.log();
-		log.Debug(rule_fprs.transform(rule_definition_tokens));
-		console.log();
-
-
-		//TODO - check what happens if we try to create a tokenizer where there is a group
-
+		//console.log(item.title);
+		//console.log();
+		new_tokenizer.rule_definitions.push(...rule_fprs.transform(rule_definition_tokens));
+		//console.log();
 
 	}, ...dotted_name_statement_settings),
 
@@ -79,11 +79,11 @@ export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 
 const token_definition_parser = new O.Tree_Processor('Token_Definition_Parser', [
 	create_block_rule('default token', (resolver, item, match, group_args) => {
-		return new PL_AST.Default_Token(group_args.name.value);
+		return new PL_AST.Default_Token(item, group_args.name.value);
 	}, ...capture_anything),
 
 	create_named_definition_rule((resolver, item, match, group_args) => {
-		return new PL_AST.Regexp_Token(group_args.key.value, group_args.value.value);
+		return new PL_AST.Regexp_Token(item, group_args.key.value, group_args.value.value);
 	}),
 
 ]);

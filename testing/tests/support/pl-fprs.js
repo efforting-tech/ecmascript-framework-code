@@ -66,7 +66,7 @@ const rule_value_1_fprs = new Fixed_Point_Reduction_Scanner([
 		]), ((scanner, sequence, match) => {
 
 			const [identifier] = match.matched_sequence;
-			sequence_in_place_replacement(match, new PL_AST.Identifier(identifier.value));
+			sequence_in_place_replacement(match, new PL_AST.Identifier(match, identifier.value));
 
 		}),
 	),
@@ -77,7 +77,6 @@ const rule_value_1_fprs = new Fixed_Point_Reduction_Scanner([
 
 //Second pass will turn stuff like "stuff as thing" into the proper alias node
 //This must be RULE_MAJOR because once all rules are performed we will get rid of punctuaction commas (they are only for disambiguition which should be reflected in the design for the language)
-//TODO - source mapping
 const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
 
 	new R.Transform_Rule(
@@ -87,7 +86,7 @@ const rule_value_2_fprs = new Fixed_Point_Reduction_Scanner([
 			new C.Constructor_is(PL_AST.Identifier),
 		]), ((scanner, sequence, match) => {
 			const [identifier, _as_, alias] = match.matched_sequence;
-			sequence_in_place_replacement(match, new PL_AST.Capture(identifier, alias.value));
+			sequence_in_place_replacement(match, new PL_AST.Capture(match, identifier, alias.value));
 
 		}),
 	),
@@ -163,7 +162,7 @@ const string_fprs = new Fixed_Point_Reduction_Scanner([
 			const [primitive_string] = contents;
 
 
-			sequence_in_place_replacement(match, new PL_AST.String(primitive_string)); //TODO track source of this AST node (source mapping)
+			sequence_in_place_replacement(match, new PL_AST.String(match, primitive_string)); //TODO track source of this AST node (source mapping)
 
 		}),
 	),
@@ -190,7 +189,7 @@ export const rule_fprs = new Fixed_Point_Reduction_Scanner([
 			const rule_value = [...rule_def.value];	//Copy rule value before transform
 			rule_value_1_fprs.transform(rule_value);
 			rule_value_2_fprs.transform(rule_value);
-			sequence_in_place_replacement(match, new PL_AST.Rule_Definition(rule_def.name, rule_value));
+			sequence_in_place_replacement(match, new PL_AST.Rule_Definition(match, rule_def.name, rule_value));
 
 		}),
 	),

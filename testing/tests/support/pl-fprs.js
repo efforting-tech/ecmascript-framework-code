@@ -1,31 +1,15 @@
-import { Group, group_access_interface } from './pl-records.js';
-import { language_definition_1 } from './pl-examples.js';
-
 import { Fixed_Point_Reduction_Scanner, REDUCTION_ORDER } from '../../../lib/parsing/scanner.js';
 import { FPR_Contract } from '../../../lib/parsing/contracts.js';
 
 import { sequence_in_place_replacement } from '../../../lib/data/transform.js';
 
-import * as O from '../../../lib/data/operators.js';
 import * as R from '../../../lib/data/rules.js';
 import * as C from '../../../lib/data/conditions.js';
 import * as SC from '../../../lib/data/sequence-conditions.js';
 import * as CA from '../../../lib/data/captures.js';
-import { create_block_rule, create_named_definition_rule } from '../../../lib/templates/rule-factories.js';
-import { REQUIREMENT_STATE } from '../../../lib/data/management.js';
-
-import { Context, CONTEXT_SYMBOL } from '../../../lib/templates/context.js';
-
-import { Basic_Dotted_Name_Tree_Interface } from '../../../lib/data/object.js';
 
 import * as PL_AST from '../../../lib/parsing/ast.js';
 import * as PL_TOKEN from '../../../lib/parsing/tokens.js';
-
-import { Parser }  from '../../../lib/parsing/generic-parser.js';
-import { Advanced_Regex_Tokenizer }  from '../../../lib/parsing/regexp-tokenizer.js';
-
-import { inspect } from 'util';
-
 
 //TODO - possibly utilize stack_channel (or something else?)
 

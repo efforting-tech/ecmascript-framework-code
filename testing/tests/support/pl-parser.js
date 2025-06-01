@@ -14,8 +14,6 @@ import { group_access_interface } from './pl-records.js';
 import { Rule_Tokenizer } from './pl-tokenizers.js';
 
 import * as log from '../../../lib/debug/console.js';
-import { TP } from './pl-debug-output.js';
-
 
 // no prefix capture, no name, no settings
 const concrete_statement_settings = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREMENT_STATE.NOT_ALLOWED, REQUIREMENT_STATE.NOT_ALLOWED];
@@ -24,7 +22,6 @@ const dotted_name_statement_settings = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREME
 
 // no prefix capture, required name (not used as a name though), no settings, case insensitive, capture anything as name
 const capture_anything = [REQUIREMENT_STATE.NOT_ALLOWED, REQUIREMENT_STATE.REQUIRED, REQUIREMENT_STATE.NOT_ALLOWED, true, /.+/];
-
 
 
 
@@ -57,110 +54,7 @@ export const pl_parser = new O.Tree_Processor('Parsing_Language_Parser', [
 		const ctx = resolver[CONTEXT_SYMBOL];
 		const new_tokenizer = group_access_interface.write(ctx.group_stack.at(-1), group_args.name.value, 'TOKENIZER' );	//TODO - actually create
 
-
-		//TODO - we should use a range based view here!
-
-		//NOTE this is just an experiment in slicing for now where we will want a partical body
-
 		const name_span = group_args.name.span_relative_to(item.lines[0].title_span);
-
-		// log.Debug(item.lines[0].full_line); // '\t\ttokenizer: embedding\n'
-		// log.Debug(name_span);	// [ 99, 108 ]
-		// log.Debug(item.owner.source.slice(...name_span)); // 'embedding'
-
-		//const body_span = [name_span[1], item.body.lines.at(-1).tail_span[1]];
-		//console.log(body_span)
-
-		//log.Debug(item.owner.source.slice(name_span[1], item.body.lines.at(-1).tail_span[1])); // "\n\t\t\tstatement: '§' optional_space, anything as value ;\n\n"
-
-
-
-		if (false) {
-
-			const column_index = name_span[0] - item.lines[0].full_span[0];
-			console.log(group_args.name.span, item.lines[0].title_span, item.lines[0].full_span, column_index);
-			console.log(name_span[0] - item.lines[0].full_span[0] );
-			log.Debug(item.owner.source.slice());
-
-	/*		log.Debug(item.lines[0].copy_trimmed_title(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
-			log.Debug(item.lines[0].copy_trimmed_title(column_index).title);		//	'embedding'
-			log.Debug(item.lines[0].copy_trimmed_title(column_index).column_index);	//	13
-	*/
-			log.Debug(item.lines[0].copy_trimmed(column_index).full_line);	//	'\t\ttokenizer: embedding\n'
-			log.Debug(item.lines[0].copy_trimmed(column_index).title);		//	'embedding'
-			log.Debug(item.lines[0].copy_trimmed(column_index).column_index);	//	13
-
-
-			//TODO - perhaps make a single copy_trimmed(head=0, title=0, tail=0)
-
-			console.log('===');
-
-			const args_to_test = [
-				[0, 0],
-				[1, 0],
-				[0, 1],
-				[1, 1],
-
-				[0, 0],
-				[3, 0],
-				[0, 3],
-				[3, 3],
-
-
-			];
-
-			const result_table = [['Arguments', 'Column Index', 'Full Line', 'Head', 'Title', 'Tail']];
-
-
-			for (const args of args_to_test) {
-				const result = item.lines[0].copy_trimmed(...args);
-
-				result_table.push([
-					`${args}`,
-					`${JSON.stringify(result.column_index)}`,
-					`${JSON.stringify(result.full_line)}`,
-					`${JSON.stringify(result.head)}`,
-					`${JSON.stringify(result.title)}`,
-					`${JSON.stringify(result.tail)}`,
-				]);
-
-			}
-
-
-			TP.print(result_table);
-
-	/*		log.Debug(item.lines[0].copy_trimmed(0, 0, 0, 0).full_line);
-			log.Debug(item.lines[0].copy_trimmed(1, 0, 0, 0).full_line);
-			console.log('---');
-
-			log.Debug(item.lines[0].copy_trimmed(5, 0, 0, 0).full_line);
-			log.Debug(item.lines[0].copy_trimmed(0, 5, 0, 0).full_line);
-			log.Debug(item.lines[0].copy_trimmed(0, 0, 5, 0).full_line);
-			log.Debug(item.lines[0].copy_trimmed(0, 0, 0, 5).full_line);
-
-	*/
-
-
-
-		}
-
-
-
-/*
-		const ts = compute_span_relative_to(match.value.value.indices[1], item.lines[0].title_span);
-		log.Debug(match.value.condition.pattern);
-		log.Debug(match.value.value);
-		log.Debug(match.value.value.indices[1]);
-		log.Debug(ts);
-		log.Debug(item.owner.source.slice(...ts));
-		log.Debug(item.owner.source.slice(...item.lines[0].title_span));
-
-*/
-
-
-
-		//const definition = item.body.to_string();		//NOTE - we should not do it like this because now we recreate the text from the node - we should have our trees operate on text spans all the way up!
-		//log.Debug('span', item.body.source.slice(...item.body.span));	//This shows that we can get the span of the body properly
 
 		//console.log(item.body.span);
 		const [body_start, body_end] = item.body.span;

@@ -1,4 +1,5 @@
 
+import * as log from '../../lib/debug/console.js';
 
 import { Group, group_access_interface } from './support/pl-records.js';
 import { pl_parser } from './support/pl-parser.js';
@@ -53,7 +54,6 @@ import { inspect } from 'util';
 
 
 //TODO - possibly utilize stack_channel (or something else?)
-
 const root_group = new Group('root');
 pl_parser[CONTEXT_SYMBOL] = {
 	root: root_group,
@@ -61,25 +61,6 @@ pl_parser[CONTEXT_SYMBOL] = {
 }
 
 
-//const rule_tokens = (new Rule_Parser(tokenizer_rules, tokenizer_rule_parser)).parse();
-//rule_fprs.transform(rule_tokens);
-
-//console.log(inspect(rule_tokens, {colors: true, depth: null}));
-//console.log(inspect(rule_tokens[0].value, {colors: true, depth: null}));
-//string_fprs.transform(rule_tokens[0].value[0].value);
-
-
-
 pl_parser.process_text(language_definition_1);
-//const tokens = token_definition_parser.process_text(token_definition);
 
-//console.log(inspect(tokens, {colors: true, depth: null}));
-//console.log(inspect(root_group, {colors: true, depth: null}));
-
-//TODO next: Implement token definition tables and tokenizers
-//			create a usable tokenizer based on this
-
-//	Look into template-title.js for what is next after that
-
-
-process.exit(1);
+log.Debug(root_group);

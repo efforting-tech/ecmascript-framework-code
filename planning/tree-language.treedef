@@ -1,0 +1,27 @@
+include: text.treedef
+
+component: mutable text tree
+	brief: Text node tree that is mutable and can have nodes added or removed from it
+	requires:
+		/text/tree
+		/text/writer
+
+
+abstract component: text tree dispatcher
+	brief: Process a tree or branch based on the title of the node
+	requires:
+		/text/tree
+
+	abstract component: regex based
+		brief: Uses regular expressions for resolution
+
+		concrete component: hardcoded
+			planned implementation for: hypothetical version 1
+
+		concrete component: specification
+			requires:
+				/specification language/text dispatcher
+				/translator/text dispatcher specification to regex
+
+	concrete component: token based
+		brief: Tokenizes the title and then uses structural matching for resolution

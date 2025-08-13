@@ -1,0 +1,10 @@
+group: text
+	concrete component: view
+
+	concrete component: writer
+		brief: Text editing type of operations
+
+	concrete component: tree
+		brief: Handling text as a tree of text nodes
+		requires:
+			../view

@@ -15,8 +15,11 @@ import { Program_Context } from 'efforting.tech-framework/tree-language/context.
 
 
 
-
+//TODO - Move to lib
 class Rewrite_Engine {
+	// NOTE: A rewrite engine could, under the assumption it is the only thing mutating sequences, have a cache to prevent re-evaluating conditions over and over when no mutations have occured.
+	// TODO: Implement such a feature or possibly make an extension of Rewrite_Engine
+
 	constructor(rules=[]) {
 		Object.assign(this, { rules });
 	}
@@ -37,6 +40,10 @@ class Rewrite_Engine {
 
 	}
 
+	exhaust_rewrites(state) {
+		while (this.rewrite_once(state));
+	}
+
 
 	match(state) {
 		for (const [condition, action] of this.rules) {
@@ -51,7 +58,6 @@ class Rewrite_Engine {
 
 
 
-
 const token_characters = '|«»[]() \t\n';
 const token_names = 'PIPE, LD_ARROW, RD_ARROW, LSQ_PAR, RSQ_PAR, L_PAR, R_PAR, SPACE, TABULATOR, NEWLINE';
 
@@ -62,6 +68,8 @@ Object.assign(T, create_symbol_tokens('OPTIONAL, CAPTURE, EXPRESSION'));
 T.IDENTIFIER = /(\w+)/;
 T.WHITESPACE = /(\s+)/;
 
+
+dump(T)
 
 
 // NOTE - this is somewhat cumbersome and it also doesn't give a clean directory back - but will have to do for now
@@ -114,9 +122,17 @@ const system = P.tokenization_system(null,
 
 		P.default_action( P.emit_token(TOKEN.TEXT) ),
 	),
+	P.sub_tokenizer('inner_capture',
+		P.on_token('RD_ARROW', P.emit_token(TOKEN.TEXT).then(P.exit())),
+		P.on_token('LD_ARROW', P.emit_token(TOKEN.TEXT).then(P.enter().then( P.emit_pending_tokens() ))),
+
+		P.on_token('WHITESPACE', P.emit_token(TOKEN.WHITESPACE)),
+
+		P.default_action( P.emit_token(TOKEN.TEXT) ),
+	),
 	P.sub_tokenizer('capture',
-		P.on_token('RD_ARROW', P.emit_token(TOKEN.TEXT).then(P.exit()) ),
-		P.on_token('LD_ARROW', P.emit_token(TOKEN.TEXT).then(P.enter().then( P.emit_token(TOKEN.CAPTURE) ))),
+		P.on_token('RD_ARROW', P.exit()),
+		P.on_token('LD_ARROW', P.enter('inner_capture').and( P.emit_token('hellu')) ),
 
 		P.on_token('WHITESPACE', P.emit_token(TOKEN.WHITESPACE)),
 
@@ -147,7 +163,7 @@ function single_word_condition(word) {
 
 
 
-const state = [...tokenizer.tokenize('stuff «inline «nested»» things', 0, 'capture')];
+const state = [...tokenizer.tokenize('stuff «inline «inner»» things')];
 
 
 //TODO - move to lib
@@ -186,7 +202,7 @@ const rw = new Rewrite_Engine([
 
 
 dump(state)
-while (rw.rewrite_once(state));
+rw.exhaust_rewrites(state);
 dump(state)
 
 

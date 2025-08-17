@@ -32,6 +32,8 @@ Repetititon modifiers modifiers
 
 ---
 
+Note: This table schema represents an earlier idea for how to make this schema. This whole document is only a place holder that will be addressed once the foundational layers are more flushed out.
+
 Table schema: token_table_schema
 	match column: symbol
 		@create.symbol

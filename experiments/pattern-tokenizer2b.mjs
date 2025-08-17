@@ -30,7 +30,7 @@ class Rewrite_Engine {
 			const rule_match = this.match(state.slice(index));
 			if (rule_match) {
 				const { condition, match, action } = rule_match;
-				const rewrite_as = action(this, match);
+				const rewrite_as = action(this, match, state.slice(index, index+match.sequence_length));
 				state.splice(index, match.sequence_length, ...rewrite_as);
 				return true;
 
@@ -41,7 +41,11 @@ class Rewrite_Engine {
 	}
 
 	exhaust_rewrites(state) {
-		while (this.rewrite_once(state));
+		let count=0;
+		while (this.rewrite_once(state)) {
+			count++;
+		};
+		return count;
 	}
 
 
@@ -67,9 +71,6 @@ Object.assign(T, create_symbol_tokens('OPTIONAL, CAPTURE, EXPRESSION'));
 
 T.IDENTIFIER = /(\w+)/;
 T.WHITESPACE = /(\s+)/;
-
-
-dump(T)
 
 
 // NOTE - this is somewhat cumbersome and it also doesn't give a clean directory back - but will have to do for now
@@ -105,6 +106,8 @@ const system = P.tokenization_system(null,
 		P.on_token('ESCAPE_LD_ARROW', P.emit_token(TOKEN.TEXT)),
 		P.on_token('ESCAPE_RD_ARROW', P.emit_token(TOKEN.TEXT)),
 
+		P.on_token('WHITESPACE', P.emit_token(TOKEN.WHITESPACE)),
+
 		P.on_token('LD_ARROW', P.enter('capture').then( P.emit_token(TOKEN.CAPTURE) )),
 
 		P.on_token('R_PAR', P.exit() ),
@@ -123,8 +126,8 @@ const system = P.tokenization_system(null,
 		P.default_action( P.emit_token(TOKEN.TEXT) ),
 	),
 	P.sub_tokenizer('inner_capture',
-		P.on_token('RD_ARROW', P.emit_token(TOKEN.TEXT).then(P.exit())),
-		P.on_token('LD_ARROW', P.emit_token(TOKEN.TEXT).then(P.enter().then( P.emit_pending_tokens() ))),
+		P.on_token('RD_ARROW', P.emit_token(TOKEN.TEXT).and(P.exit())),
+		P.on_token('LD_ARROW', P.emit_token(TOKEN.TEXT).and(P.enter().then( P.emit_pending_tokens() ))),
 
 		P.on_token('WHITESPACE', P.emit_token(TOKEN.WHITESPACE)),
 
@@ -132,7 +135,7 @@ const system = P.tokenization_system(null,
 	),
 	P.sub_tokenizer('capture',
 		P.on_token('RD_ARROW', P.exit()),
-		P.on_token('LD_ARROW', P.enter('inner_capture').and( P.emit_token('hellu')) ),
+		P.on_token('LD_ARROW', P.enter('inner_capture').and( P.emit_token(TOKEN.TEXT)).then(P.emit_token('after')) ),
 
 		P.on_token('WHITESPACE', P.emit_token(TOKEN.WHITESPACE)),
 
@@ -163,7 +166,7 @@ function single_word_condition(word) {
 
 
 
-const state = [...tokenizer.tokenize('stuff «inline «inner»» things')];
+const state = [...tokenizer.tokenize('\\«stuff\\» «outstuff «substuff»» things')];
 
 
 //TODO - move to lib
@@ -186,23 +189,52 @@ class Match_Span {
 //Next step is to have a rewrite engine to match state (and to coalesce neighbor tokens)
 
 
+const checked = new Set();
 const rw = new Rewrite_Engine([
 
-	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE))), 2, null), (engine, match) => {
+	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE))), 2, null), (engine, match, item) => {
 		const span_match = new Match_Span(match.matched_sequence.at(0), match.matched_sequence.at(-1));
 		return [new Token_Match(match.condition, TOKEN.WHITESPACE, span_match)];
 	}],
 
-	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.TEXT))), 2, null), (engine, match) => {
+	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.TEXT))), 2, null), (engine, match, item) => {
 		const span_match = new Match_Span(match.matched_sequence.at(0), match.matched_sequence.at(-1));
 		return [new Token_Match(match.condition, TOKEN.TEXT, span_match)];
 	}],
+
+	//Begin remove whitespace adjacant to array sub match
+	[new C.Sequence2(
+		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE) )),
+		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) ))
+	), (engine, match, sequence) => {
+		return sequence.slice(1);
+	}],
+
+	[new C.Sequence2(
+		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) )),
+		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE) ))
+	), (engine, match, sequence) => {
+		return sequence.slice(0, 1);
+	}],
+	//End remove whitespace adjacant to array sub match
+
+	//Process sub match
+	[new C.Conjunction(new C.Not_in_set(checked), new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) )), (engine, match, sequence) => {
+		const [token_match] = sequence;
+		const sub_state = [...token_match.match_or_value];
+		const changes = engine.exhaust_rewrites(sub_state);
+		const new_result = new Token_Match(token_match.state, token_match.token, sub_state);
+		checked.add(new_result);
+		return [new_result];
+
+	}]
 
 ]);
 
 
 dump(state)
 rw.exhaust_rewrites(state);
+console.log('-- After rewrite --');
 dump(state)
 
 

@@ -24,13 +24,13 @@ class Rewrite_Engine {
 		Object.assign(this, { rules });
 	}
 
-	rewrite_once(state) {
+	rewrite_once(state, context=null) {
 
 		for (let index=0; index<state.length; index++) {
 			const rule_match = this.match(state.slice(index));
 			if (rule_match) {
 				const { condition, match, action } = rule_match;
-				const rewrite_as = action(this, match, state.slice(index, index+match.sequence_length));
+				const rewrite_as = action({engine: this, match, state: state.slice(index, index+match.sequence_length), context});
 				state.splice(index, match.sequence_length, ...rewrite_as);
 				return true;
 
@@ -40,9 +40,9 @@ class Rewrite_Engine {
 
 	}
 
-	exhaust_rewrites(state) {
+	exhaust_rewrites(state, context=null) {
 		let count=0;
-		while (this.rewrite_once(state)) {
+		while (this.rewrite_once(state, context)) {
 			count++;
 		};
 		return count;
@@ -188,16 +188,16 @@ class Match_Span {
 
 //Next step is to have a rewrite engine to match state (and to coalesce neighbor tokens)
 
-
+// TODO - make it possible to bind "checked" or other data to a context of the rewrite engine instead of doing it like a global/closure.
 const checked = new Set();
 const rw = new Rewrite_Engine([
 
-	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE))), 2, null), (engine, match, item) => {
+	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE))), 2, null), ({engine, match, state, context}) => {
 		const span_match = new Match_Span(match.matched_sequence.at(0), match.matched_sequence.at(-1));
 		return [new Token_Match(match.condition, TOKEN.WHITESPACE, span_match)];
 	}],
 
-	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.TEXT))), 2, null), (engine, match, item) => {
+	[new C.Repeat(new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.TEXT))), 2, null), ({engine, match, state, context}) => {
 		const span_match = new Match_Span(match.matched_sequence.at(0), match.matched_sequence.at(-1));
 		return [new Token_Match(match.condition, TOKEN.TEXT, span_match)];
 	}],
@@ -206,21 +206,21 @@ const rw = new Rewrite_Engine([
 	[new C.Sequence2(
 		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE) )),
 		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) ))
-	), (engine, match, sequence) => {
-		return sequence.slice(1);
+	), ({ engine, match, state, context}) => {
+		return state.slice(1);
 	}],
 
 	[new C.Sequence2(
 		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) )),
 		new C.Conjunction(new C.Constructor_is(Token_Match), new C.Property('token', new C.Value_is(TOKEN.WHITESPACE) ))
-	), (engine, match, sequence) => {
-		return sequence.slice(0, 1);
+	), ({ engine, match, state, context}) => {
+		return state.slice(0, 1);
 	}],
 	//End remove whitespace adjacant to array sub match
 
 	//Process sub match
-	[new C.Conjunction(new C.Not_in_set(checked), new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) )), (engine, match, sequence) => {
-		const [token_match] = sequence;
+	[new C.Conjunction(new C.Not_in_set(checked), new C.Constructor_is(Token_Match), new C.Property('match_or_value', new C.Constructor_is(Array) )), ({ engine, match, state, context}) => {
+		const [token_match] = state;
 		const sub_state = [...token_match.match_or_value];
 		const changes = engine.exhaust_rewrites(sub_state);
 		const new_result = new Token_Match(token_match.state, token_match.token, sub_state);
